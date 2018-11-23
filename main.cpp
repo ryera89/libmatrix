@@ -11,6 +11,8 @@ int main(){
     Matrix<double,2> M = {{1,2,3,4},
                           {5,6,7,8}};
 
+    M(0,0) = 343;
+
     cout << M << endl;
 
     //FIXME: Matrix Slicing must has in range values

@@ -390,6 +390,7 @@ public:
     }
 
     //TODO implementar un iterador para esta clase
+    //TODO valorar si esto vale la pena
     template<typename R = T*>
     std::enable_if_t<(N==1),R>
     end(){return (_ptr + _desc._size);}
@@ -397,29 +398,21 @@ public:
     std::enable_if_t<(N==1),R>
     end() const{return (_ptr + _desc._size);}
 
+    //TODO valorar si esto hay que removerlo
     size_t rows() const {return extent(0);}
     size_t columns() const {return extent(1);}
 
     std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
     operator[](size_t i){
-        if constexpr (N>=2){
-            return row(i);
-        }else{
-            return _ptr[i];
-        }
+        return row(i);
     }
-
     std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
     operator[](size_t i) const{
-        if constexpr (N>=2){
-            return row(i);
-        }else{
-            return _ptr[i];
-        }
+        return row(i);
     }
-
     std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
     row(size_t i){
+        assert(i < extent(0));
         if constexpr (N>=2){
             Matrix_Slice<N-1> row;
             slice_dim<0>(i,_desc,row);
@@ -430,6 +423,7 @@ public:
     }
     std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
     row(size_t i) const{
+        assert(i < extent(0));
         if constexpr (N>=2){
             matrix_impl::Matrix_Slice<N-1> row;
             matrix_impl::slice_dim<0>(i,_desc,row);
@@ -439,6 +433,7 @@ public:
         }
 
     }
+    //TODO valorar esta implementacion
     /*template<typename Ref = matrix_impl::Matrix_Ref<T,N-1>>
     std::enable_if_t<(N>=2),Ref>
     column(size_t i){
@@ -485,6 +480,8 @@ public:
          return {data(),d};
     }
 };
+    //TODO Matrix_Ref<T,2>
+    //TODO Matrix_Ref<T,1>
     template<typename T>
     class Matrix_Ref<T,0>{
         T* _ptr_elem;
