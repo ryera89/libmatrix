@@ -248,7 +248,7 @@ struct Matrix_Slice<1>{
 };
 /*************************Funciones de ayuda para la implementacion************************************************/
 template<typename List>
-constexpr bool check_non_jagged(const List &list){ //check that all rows has the same number of elements
+inline bool check_non_jagged(const List &list){ //check that all rows has the same number of elements
     auto i = list.begin();
     for (auto j = i+1; j!=list.end();++j){
         if (i->size()!=j->size()) return false;
@@ -307,7 +307,7 @@ inline bool check_bounds(const Matrix_Slice<N> &slice,Dims... dims){
     return std::equal(indexs,indexs+N,slice._extents.begin(),std::less<size_t>{});
 }
 template<size_t Dim,size_t N,typename S>
-inline size_t do_slice_dim(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,const S &s){
+constexpr size_t do_slice_dim(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,const S &s){
     size_t start{0};
 
     if constexpr (std::is_same_v<S,Slice>){
@@ -324,19 +324,19 @@ inline size_t do_slice_dim(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,const S
    return start;
 }
 template<size_t N>
-inline size_t do_slice(const Matrix_Slice<N> &/*os*/,Matrix_Slice<N> &/*ns*/){
+constexpr size_t do_slice(const Matrix_Slice<N> &/*os*/,Matrix_Slice<N> &/*ns*/){
 
     return 0;
 }
 template<size_t N,typename T,typename... Args>
-inline size_t do_slice(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,const T& s,const Args&... args){
+constexpr size_t do_slice(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,const T& s,const Args&... args){
     //return (do_slice_dim<sizeof... (Args)>(os,ns,args) + ...);
     size_t m = do_slice_dim<sizeof... (Args)+1>(os,ns,s);
     size_t n = do_slice(os,ns,args...);
     return n+m;
 }
 template<size_t Dim,size_t N>
-inline void slice_dim(size_t n,const Matrix_Slice<N> &os,Matrix_Slice<N-1> &ns){
+constexpr void slice_dim(size_t n,const Matrix_Slice<N> &os,Matrix_Slice<N-1> &ns){
     ns._start = n*os._strides[Dim];
     if constexpr (Dim == 0){
         std::copy(&os._extents[1],os._extents.end(),ns._extents.begin());
