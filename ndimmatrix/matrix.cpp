@@ -13,17 +13,17 @@ std::ostream& operator << (std::ostream& os,const Matrix<T,2> &m){
     //os.unsetf(ff);
     return os;
 }*/
-template<typename T>
-std::ostream& operator << (std::ostream& os,const Matrix<T,1> &m){
-    std::ios_base::fmtflags ff = std::ios::scientific;
-    ff |= std::ios::showpos;
-    os.setf(ff);
-    for (size_t i = 0; i < m.size(); ++i){
-        os << m(i) << '\n';
-    }
-    os.unsetf(ff);
-    return os;
-}
+//template<typename T>
+//std::ostream& operator << (std::ostream& os,const Matrix<T,1> &m){
+//    std::ios_base::fmtflags ff = std::ios::scientific;
+//    ff |= std::ios::showpos;
+//    os.setf(ff);
+//    for (size_t i = 0; i < m.size(); ++i){
+//        os << m(i) << '\n';
+//    }
+//    os.unsetf(ff);
+//    return os;
+//}
 template<typename T>
 std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,2> &m){
     if (ofs.is_open()){

@@ -159,10 +159,7 @@ public:
         return *this;
     }
 
-    size_t rows() const {return extent(0);}
-    size_t columns() const {return extent(1);}
-
-    size_t size() const {return _desc._size;}
+    size_t size() const noexcept {return _desc._size;}
 
     const matrix_impl::Matrix_Slice<N>& descriptor() const{
         return _desc;
@@ -269,6 +266,227 @@ public:
 };
 
     template<typename T>
+    class Matrix<T,2>{
+         matrix_impl::Matrix_Slice<2> _desc;
+         std::vector<T> _elems;
+    public:
+         //Common aliases
+         static constexpr size_t order = 2;
+         using value_type = T;
+         using iterator = typename std::vector<T>::iterator;
+         using const_iterator = typename std::vector<T>::const_iterator;
+
+         //Default constructor and destructor
+         Matrix() = default;
+         ~Matrix() = default;
+
+         //Move constructor and assignment
+         Matrix(Matrix&&) = default;
+         Matrix& operator=(Matrix&&) = default;
+
+         //Copy constructor and assignment
+         Matrix(const Matrix&) = default;
+         Matrix& operator=(const Matrix&) = default;
+
+         explicit Matrix(size_t m,size_t n):_desc(0,m,n),_elems(m*n){}
+         template<typename U>
+         Matrix(const Matrix<U,2> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
+             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+         }
+         template<typename U>
+         Matrix& operator = (const Matrix<U,2> &other){
+             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+             _desc = other._desc;
+             _elems.assign(other.begin(),other.end());
+             return *this;
+
+         }
+         //convertir de Matrix_Ref a Matrix
+         template<typename U>
+         Matrix(const matrix_impl::Matrix_Ref<U,2> &ref):_desc(0,ref.descriptor()._extents[0],ref.descriptor()._extents[1]),
+         _elems(_desc._extents[0]*_desc._extents[1])
+         {
+             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+             for (size_t i = 0; i < rows(); ++i){
+                 for (size_t j = 0; j < cols(); ++j){
+                     _elems[i*cols() + j] = ref(i,j);
+                 }
+             }
+         }
+         template<typename U>
+         Matrix& operator=(const matrix_impl::Matrix_Ref<U,2> &ref){
+             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+             _desc._start = 0;
+             _desc._extents = ref.descriptor()._extents;
+             _desc.init();
+             _elems.resize(size());
+             for (size_t i = 0; i < rows(); ++i){
+                 for (size_t j = 0; j < cols(); ++j){
+                     _elems[i*cols() + j] = ref(i,j);
+                 }
+             }
+         }
+         //Construction and assignment from nested initializars
+         Matrix(matrix_impl::Matrix_Initializer<T,2> init){
+             matrix_impl::derive_extents(_desc._extents,init);
+             _desc.init();    //Strides determination from extents
+             _elems.reserve(_desc._size);
+             matrix_impl::insert_flat(init,_elems);
+             assert(_elems.size() == _desc._size);
+         }
+         Matrix& operator=(matrix_impl::Matrix_Initializer<T,2> init){
+             matrix_impl::derive_extents(_desc._extents,init);
+             _elems.reserve(_desc._size);
+             matrix_impl::insert_flat(init,_elems);
+             assert(_elems.size() == _desc._size);
+             return *this;
+         }
+         Matrix& operator=(const T &val){
+             std::fill(begin(),end(),val);
+             return *this;
+         }
+         //Disable use of {} for extents
+         template<typename U>
+         Matrix(std::initializer_list<U>) = delete;
+         template<typename U>
+         Matrix& operator=(std::initializer_list<U>) = delete;
+
+
+         size_t extent(size_t n) const{
+             assert(n < 2);
+             return _desc._extents[n];
+         }
+         size_t rows() const noexcept {return extent(0);}
+         size_t cols() const noexcept {return extent(1);}
+
+         size_t size() const noexcept {return _desc._size;}
+
+         const matrix_impl::Matrix_Slice<2>& descriptor() const noexcept{
+             return _desc;
+         }
+
+         iterator begin(){return _elems.begin();}
+         const_iterator begin() const{return _elems.cbegin();}
+
+         iterator end(){return _elems.end();}
+         const_iterator end() const{return _elems.cend();}
+
+         T* data() {return _elems.data();}
+         const T* data() const {return _elems.data();}
+
+         //Arithmetic ops
+         template<typename F>
+         Matrix<T,2>& apply(F fun){
+             std::for_each(begin(),end(),fun);
+             return *this;
+         }
+
+         //Unary minus
+         Matrix<T,2> operator-() const
+         {
+             Matrix<T,2> res(*this);
+             std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
+             return res;
+         }
+         //Arithmetic operations.
+         template<typename Scalar>
+         Matrix& operator+=(const Scalar& val)
+         {
+             std::for_each(begin(),end(),[&val](T &elem){elem+=val;});
+             return *this;
+         }
+         template<typename Scalar>
+         Matrix& operator-=(const Scalar& val)
+         {
+             std::for_each(begin(),end(),[&val](T &elem){elem-=val;});
+             return *this;
+         }
+         template<typename Scalar>
+         Matrix& operator*=(const Scalar& val)
+         {
+             std::for_each(begin(),end(),[&val](T &elem){elem*=val;});
+             return *this;
+         }
+         template<typename Scalar>
+         Matrix& operator/=(const Scalar& val)
+         {
+             //TODO valorar no permitir division por cero
+             std::for_each(begin(),end(),[&val](T &elem){elem/=val;});
+             return *this;
+         }
+         template<typename U>
+         Matrix& operator+=(const Matrix<U,2> &m)
+         {
+             assert(rows() == m.rows() && cols() == m.cols());
+             std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
+             return *this;
+         }
+         template<typename U>
+         Matrix& operator-=(const Matrix<U,2> &m)
+         {
+             assert(size() == m.size());
+             std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
+             return *this;
+         }
+
+         //Access functions
+         matrix_impl::Matrix_Ref<T,1> row(size_t i){
+             assert(i < rows());
+             matrix_impl::Matrix_Slice<1> row;
+             matrix_impl::slice_dim<0>(i,_desc,row);
+             return {data(),row};
+         }
+         matrix_impl::Matrix_Ref<const T,1> row(size_t i) const{
+             assert(i < rows());
+             matrix_impl::Matrix_Slice<1> row;
+             matrix_impl::slice_dim<0>(i,_desc,row);
+             return {data(),row};
+         }
+         matrix_impl::Matrix_Ref<T,1> column(size_t i){
+             assert(i < cols());
+             matrix_impl::Matrix_Slice<1> col;
+             matrix_impl::slice_dim<1>(i,_desc,col);
+             return {data(),col};
+         }
+         matrix_impl::Matrix_Ref<const T,1> column(size_t i) const{
+             assert(i < cols());
+             matrix_impl::Matrix_Slice<1> col;
+             matrix_impl::slice_dim<1>(i,_desc,col);
+             return {data(),col};
+         }
+         matrix_impl::Matrix_Ref<T,1> operator[](size_t i){
+                 return row(i);
+         }
+         matrix_impl::Matrix_Ref<const T,1> operator[](size_t i) const{
+                 return row(i);
+         }
+         T& operator()(size_t i,size_t j){
+             assert(i < rows() && j < cols());
+             return *(data() + _desc(i,j));
+         }
+         const T& operator()(size_t i,size_t j) const{
+             assert(i < rows() && j < cols());
+             return *(data() + _desc(i,j));
+         }
+         template<typename... Args>
+         std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<T,2>>
+         operator()(Args... args){
+              matrix_impl::Matrix_Slice<2> d;
+              d._size = 1;
+              d._start = matrix_impl::do_slice(_desc,d,args...);
+              return {data(),d};
+         }
+
+         template<typename... Args>
+         std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<const T,2>>
+         operator()(Args... args) const{
+              matrix_impl::Matrix_Slice<2> d;
+              d._size = 1;
+              matrix_impl::do_slice(_desc,d,args...);
+              return {data(),d};
+         }
+    };
+    template<typename T>
     class Matrix<T,1>{
         matrix_impl::Matrix_Slice<1> _desc;
         std::vector<T> _elems;
@@ -306,18 +524,13 @@ public:
             return *this;
 
         }
-
         //TODO ver que hacer aqui
         template<typename U>
-        Matrix(const matrix_impl::Matrix_Ref<U,1> &ref){
+        Matrix(const matrix_impl::Matrix_Ref<U,1> &ref):_desc(0,ref.descriptor()._extents[0]),
+        _elems(_desc._size)
+        {
             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
-            _desc._start = 0;
-            _desc._extents = ref.descriptor()._extents;
-            _desc.init();
-            _elems.resize(_desc._size);
-            _elems.assign(ref.begin,ref.end());
-            //matrix_impl::Matrix_Ref<T,N> mref{data(),_desc};
-            //matrix_impl::assing_slice_vals(ref,mref);
+            for (size_t i = 0; i < _desc._extents[0]; ++i) _elems[i] = ref(i);
         }
         template<typename U>
         Matrix& operator = (const matrix_impl::Matrix_Ref<U,1> &ref){
@@ -326,9 +539,7 @@ public:
             _desc._extents = ref.descriptor()._extents;
             _desc.init();
             _elems.resize(_desc._size);
-            _elems.assign(ref.begin,ref.end());
-            //matrix_impl::Matrix_Ref<T,N> mref{data(),_desc};
-            //matrix_impl::assing_slice_vals(ref,mref);
+            for (size_t i = 0; i < _desc._extents[0]; ++i) _elems[i] = ref(i);
             return *this;
         }
 
@@ -604,13 +815,13 @@ public:
         return std::inner_product(u.begin(),u.end(),v.begin(),0.0);
     }
     inline VecDoub operator *(const MatDoub &M,const VecDoub &v){
-        assert(M.columns() == v.size());
+        assert(M.cols() == v.size());
 
         VecDoub r(M.rows());
 
         for (size_t i = 0; i < M.rows(); ++i){
             double tmp = 0.0;
-            for (size_t j = 0; j < M.columns(); ++j){
+            for (size_t j = 0; j < M.cols(); ++j){
                 tmp += M(i,j)*v(j);
             }
             r(i) = tmp;
@@ -620,9 +831,9 @@ public:
     inline VecDoub operator *(const VecDoub &v,const MatDoub &M){
         assert(M.rows() == v.size());
 
-        VecDoub r(M.columns());
+        VecDoub r(M.cols());
 
-        for (size_t i = 0; i < M.columns(); ++i){
+        for (size_t i = 0; i < M.cols(); ++i){
             double tmp = 0.0;
             for (size_t j = 0; j < M.rows(); ++j){
                 tmp += v(j)*M(j,i);
@@ -633,11 +844,11 @@ public:
     }
     inline MatDoub operator*(const MatDoub &M1,const MatDoub &M2){
 
-        assert(M1.columns() == M2.rows());
+        assert(M1.cols() == M2.rows());
 
         const size_t m = M1.rows();
-        const size_t n = M2.columns();
-        const size_t p = M1.columns();
+        const size_t n = M2.cols();
+        const size_t p = M1.cols();
         MatDoub R(m,n);
 
         for (size_t i = 0; i < m ; ++i){
@@ -698,7 +909,7 @@ inline  std::ostream& operator << (std::ostream& os,const Matrix<T,2> &m){
         //ff |= std::ios::showpos;
         //os.setf(ff);
         for (size_t i = 0; i < m.rows(); ++i){
-            for (size_t j = 0; j < m.columns(); ++j)
+           for (size_t j = 0; j < m.cols(); ++j)
                 os << m(i,j) << '\t' ;
             os << '\n';
         }
@@ -706,7 +917,7 @@ inline  std::ostream& operator << (std::ostream& os,const Matrix<T,2> &m){
         return os;
     }
     template<typename T>
-    std::ostream& operator << (std::ostream& os,const Matrix<T,1> &m);/*{
+    std::ostream& operator << (std::ostream& os,const Matrix<T,1> &m){
         std::ios_base::fmtflags ff = std::ios::scientific;
         ff |= std::ios::showpos;
         os.setf(ff);
@@ -715,7 +926,7 @@ inline  std::ostream& operator << (std::ostream& os,const Matrix<T,2> &m){
         }
         os.unsetf(ff);
         return os;
-    }*/
+    }
     template<typename T>
     std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,2> &m);/*{
         if (ofs.is_open()){

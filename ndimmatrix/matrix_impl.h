@@ -242,7 +242,7 @@ struct Matrix_Slice<1>{
 //        return i;
 //    }
     constexpr size_t operator()(size_t i) const noexcept{
-        return i;
+        return i*_strides[0];
     }
 
 };
@@ -311,11 +311,13 @@ constexpr size_t do_slice_dim(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,cons
     size_t start{0};
 
     if constexpr (std::is_same_v<S,Slice>){
+        assert(s._start + s._length <= os._extents[N-Dim]);
         ns._extents[N-Dim] = s._length;
         ns._strides[N-Dim] = os._strides[N-Dim];
         ns._size *= ns._extents[N-Dim];
         start = os._strides[N-Dim]*s._start;
     }else{    //then is an size_t type or convertible to it.
+        assert(s < os._extents[N-Dim]);
         ns._extents[N-Dim] = 1;
         ns._strides[N-Dim] = os._strides[N-Dim];
         start = os._strides[N-Dim]*s;
