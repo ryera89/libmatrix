@@ -17,7 +17,7 @@ int main(){
     cout << M << endl;
 
     //FIXME: Matrix Slicing must has in range values
-    Matrix<double,2> M_slice = M(1,Slice(0,4));
+    Matrix<double,2> M_slice = M(1,Slice(0,2,2));
 
     cout << M_slice << endl;
 

@@ -161,10 +161,9 @@ public:
 
     size_t size() const noexcept {return _desc._size;}
 
-    const matrix_impl::Matrix_Slice<N>& descriptor() const{
+    const matrix_impl::Matrix_Slice<N>& descriptor() const noexcept{
         return _desc;
     }
-
     iterator begin(){return _elems.begin();}
     const_iterator begin() const{return _elems.cbegin();}
 
@@ -174,77 +173,35 @@ public:
     T* data() {return _elems.data();}
     const T* data() const {return _elems.data();}
 
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
-    operator[](size_t i){
-        if constexpr (N>=2){
-            return row(i);
-        }else{
-            return _elems[i];
-        }
+    matrix_impl::Matrix_Ref<T,N-1> row(size_t i){
+        matrix_impl::Matrix_Slice<N-1> row;
+        matrix_impl::slice_dim<0>(i,_desc,row);
+        return {data(),row};
     }
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
+    matrix_impl::Matrix_Ref<const T,N-1> row(size_t i) const{
+        matrix_impl::Matrix_Slice<N-1> row;
+        matrix_impl::slice_dim<0>(i,_desc,row);
+        return {data(),row};
+    }
+    matrix_impl::Matrix_Ref<T,N-1> operator[](size_t i){
+        return row(i);
+    }
+    matrix_impl::Matrix_Ref<const T,N-1>
     operator[](size_t i) const{
-        if constexpr (N>=2){
-            return row(i);
-        }else{
-            return _elems[i];
-        }
+        return row(i);
     }
-
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
-    row(size_t i){
-        if constexpr (N>=2){
-            matrix_impl::Matrix_Slice<N-1> row;
-            matrix_impl::slice_dim<0>(i,_desc,row);
-            return {data(),row};
-        }else{
-            return _elems[i];
-        }
-    }
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
-    row(size_t i) const{
-        if constexpr (N>=2){
-            matrix_impl::Matrix_Slice<N-1> row;
-            matrix_impl::slice_dim<0>(i,_desc,row);
-            return {data(),row};
-        }else{
-            return _elems[i];
-        }
-
-    }
-
-
-    //matrix_impl::Matrix_Ref<const T,N-1> row(size_t i) const;
-    /*template<typename Ref = matrix_impl::Matrix_Ref<T,N-1>>
-    std::enable_if_t<(N>=2),Ref>
-    column(size_t i){
-        matrix_impl::Matrix_Slice<N-1> col;
-        matrix_impl::slice_dim<1>(i,_desc,col);
-        return {data(),col};
-    }
-    template<typename Ref = matrix_impl::Matrix_Ref<const T,N-1>>
-    std::enable_if_t<(N>=2),Ref>
-    column(size_t i) const{
-        matrix_impl::Matrix_Slice<N-1> col;
-        matrix_impl::slice_dim<1>(i,_desc,col);
-        return {data(),col};
-    }*/
-    //matrix_impl::Matrix_Ref<T,N-1> column(size_t i);
-    //matrix_impl::Matrix_Ref<const T,N-1> column(size_t i) const;
-
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_element<Args...>(), T&>
     operator()(Args... args){
         assert(matrix_impl::check_bounds(_desc,args...));
-        return *(data() + _desc(args...));
+        return _elems[_desc(args...)];
     }
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_element<Args...>(),const T&>
     operator()(Args... args) const{
         assert(matrix_impl::check_bounds(_desc,args...));
-        return *(data() + _desc(args...));
+        return _elems[_desc(args...)];
     }
-
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<T,N>>
     operator()(Args... args){
@@ -253,7 +210,6 @@ public:
          d._start = matrix_impl::do_slice(_desc,d,args...);
          return {data(),d};
     }
-
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<const T,N>>
     operator()(Args... args) const{
@@ -262,9 +218,7 @@ public:
          matrix_impl::do_slice(_desc,d,args...);
          return {data(),d};
     }
-
 };
-
     template<typename T>
     class Matrix<T,2>{
          matrix_impl::Matrix_Slice<2> _desc;
@@ -351,7 +305,6 @@ public:
          template<typename U>
          Matrix& operator=(std::initializer_list<U>) = delete;
 
-
          size_t extent(size_t n) const{
              assert(n < 2);
              return _desc._extents[n];
@@ -380,7 +333,6 @@ public:
              std::for_each(begin(),end(),fun);
              return *this;
          }
-
          //Unary minus
          Matrix<T,2> operator-() const
          {
@@ -462,11 +414,11 @@ public:
          }
          T& operator()(size_t i,size_t j){
              assert(i < rows() && j < cols());
-             return *(data() + _desc(i,j));
+             return _elems[i*cols() + j];
          }
          const T& operator()(size_t i,size_t j) const{
              assert(i < rows() && j < cols());
-             return *(data() + _desc(i,j));
+             return _elems[i*cols() + j];
          }
          template<typename... Args>
          std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<T,2>>
@@ -522,7 +474,6 @@ public:
             _desc = other._desc;
             _elems.assign(other.begin(),other.end());
             return *this;
-
         }
         //TODO ver que hacer aqui
         template<typename U>
@@ -542,39 +493,16 @@ public:
             for (size_t i = 0; i < _desc._extents[0]; ++i) _elems[i] = ref(i);
             return *this;
         }
-
-//        //Construction and assignment from nested initializars
-//        Matrix(matrix_impl::Matrix_Initializer<T,1> init){
-//            matrix_impl::derive_extents(_desc._extents,init);
-//            _desc.init();    //Strides determination from extents
-//            _elems.reserve(_desc._size);
-//            matrix_impl::insert_flat(init,_elems);
-//            assert(_elems.size() == _desc._size);
-//        }
-//        Matrix& operator=(matrix_impl::Matrix_Initializer<T,1> init){
-//            matrix_impl::derive_extents(_desc._extents,init);
-//            _elems.reserve(_desc._size);
-//            matrix_impl::insert_flat(init,_elems);
-//            assert(_elems.size() == _desc._size);
-//            return *this;
-//        }
-
         Matrix& operator=(const T &val){
             std::for_each(begin(),end(),[&val](T &elem){elem = val;});
             return *this;
         }
-
-
-        //Disable use of {} for extents
-        //template<typename U>
         Matrix(std::initializer_list<T> list):_elems(list){
            _desc._start = 0;
            _desc._size = _elems.size();
            _desc._extents[0] = _elems.size();
            _desc._strides[0] = 1;
         }
-
-        //template<typename U>
         Matrix& operator=(std::initializer_list<T> list){
             _elems = list;
             _desc._start = 0;
@@ -583,6 +511,21 @@ public:
             _desc._strides[0] = 1;
             return *this;
         }
+
+        size_t size() const noexcept{return _elems.size();}
+
+        const matrix_impl::Matrix_Slice<1>& descriptor() const noexcept{
+            return _desc;
+        }
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
 
         //Arithmetic ops
         template<typename F>
@@ -643,22 +586,7 @@ public:
             return *this;
         }
 
-        size_t size() const {return _elems.size();}
-        size_t rows() const {return size();}
-
-        const matrix_impl::Matrix_Slice<1>& descriptor() const{
-            return _desc;
-        }
-
-        iterator begin(){return _elems.begin();}
-        const_iterator begin() const{return _elems.cbegin();}
-
-        iterator end(){return _elems.end();}
-        const_iterator end() const{return _elems.cend();}
-
-        T* data() {return _elems.data();}
-        const T* data() const {return _elems.data();}
-
+        //access functions
         T& operator()(const size_t &i)
         {
             assert(i < size());
@@ -680,7 +608,7 @@ public:
         }
 
         matrix_impl::Matrix_Ref<const T,1> operator()(const matrix_impl::Slice &s) const{
-             matrix_impl::Matrix_Slice<1> d;
+            matrix_impl::Matrix_Slice<1> d;
             d._start = s._start;
             d._size = s._length;
             d._extents[0] = s._length;
@@ -703,8 +631,8 @@ public:
         }
     };
 
-    typedef Matrix<double,1> VecDoub;
-    typedef Matrix<double,2> MatDoub;
+    //typedef Matrix<double,1> VecDoub;
+    //typedef Matrix<double,2> MatDoub;
 
     template<typename T>
     class Matrix<T,0>{
@@ -731,163 +659,163 @@ public:
     };
 
 
-    //TODO: Think about type asserts
-    //Matrix Binary Arithmetic Operations
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m);
-        res+=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res+=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res-=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m.descriptor()._extents);
-        std::transform(m.begin(),m.end(),res.begin(),[&val](const T &elem){return val-elem;});
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m);
-        res*=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res*=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res/=val;
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-        Matrix<RT,N> res(m1);
-        res+=m2;
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-        Matrix<RT,N> res(m1);
-        res-=m2;
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
-    inline Matrix<RT,1> operator *(const Matrix<T1,2> &m2,const Matrix<T2,1> m1){
-        assert(m2.columns() == m1.size());
-        Matrix<RT,1> res(m2.rows());
-        for (size_t i = 0; i < m2.rows(); ++i){
-            res(i) = std::inner_product(m2.row(i).begin(),m2.row(i).end(),m1.begin(),0);
-        }
-        return res;
-    }
+//    //TODO: Think about type asserts
+//    //Matrix Binary Arithmetic Operations
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m);
+//        res+=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res+=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res-=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m.descriptor()._extents);
+//        std::transform(m.begin(),m.end(),res.begin(),[&val](const T &elem){return val-elem;});
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m);
+//        res*=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res*=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res/=val;
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+//    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+//        Matrix<RT,N> res(m1);
+//        res+=m2;
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+//    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+//        Matrix<RT,N> res(m1);
+//        res-=m2;
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+//    inline Matrix<RT,1> operator *(const Matrix<T1,2> &m2,const Matrix<T2,1> m1){
+//        assert(m2.columns() == m1.size());
+//        Matrix<RT,1> res(m2.rows());
+//        for (size_t i = 0; i < m2.rows(); ++i){
+//            res(i) = std::inner_product(m2.row(i).begin(),m2.row(i).end(),m1.begin(),0);
+//        }
+//        return res;
+//    }
 
 
 
-    //TODO optimizar estas operaciones y para tipos genericos
+//    //TODO optimizar estas operaciones y para tipos genericos
 
-    inline double operator*(const matrix_impl::Matrix_Ref<double,1> &mref,const Matrix<double,1> &v){
-        assert(mref.size() == v.size());
+//    inline double operator*(const matrix_impl::Matrix_Ref<double,1> &mref,const Matrix<double,1> &v){
+//        assert(mref.size() == v.size());
 
-        double temp = 0.0;
-        for (size_t i = 0; i < v.size(); ++i)  temp+=mref(i)*v(i);
+//        double temp = 0.0;
+//        for (size_t i = 0; i < v.size(); ++i)  temp+=mref(i)*v(i);
 
-        return temp;
-    }
+//        return temp;
+//    }
 
-    inline double operator *(const VecDoub &u,const VecDoub &v){
-        assert(u.size() == v.size());
-        return std::inner_product(u.begin(),u.end(),v.begin(),0.0);
-    }
-    inline VecDoub operator *(const MatDoub &M,const VecDoub &v){
-        assert(M.cols() == v.size());
+//    inline double operator *(const VecDoub &u,const VecDoub &v){
+//        assert(u.size() == v.size());
+//        return std::inner_product(u.begin(),u.end(),v.begin(),0.0);
+//    }
+//    inline VecDoub operator *(const MatDoub &M,const VecDoub &v){
+//        assert(M.cols() == v.size());
 
-        VecDoub r(M.rows());
+//        VecDoub r(M.rows());
 
-        for (size_t i = 0; i < M.rows(); ++i){
-            double tmp = 0.0;
-            for (size_t j = 0; j < M.cols(); ++j){
-                tmp += M(i,j)*v(j);
-            }
-            r(i) = tmp;
-        }
-        return r;
-    }
-    inline VecDoub operator *(const VecDoub &v,const MatDoub &M){
-        assert(M.rows() == v.size());
+//        for (size_t i = 0; i < M.rows(); ++i){
+//            double tmp = 0.0;
+//            for (size_t j = 0; j < M.cols(); ++j){
+//                tmp += M(i,j)*v(j);
+//            }
+//            r(i) = tmp;
+//        }
+//        return r;
+//    }
+//    inline VecDoub operator *(const VecDoub &v,const MatDoub &M){
+//        assert(M.rows() == v.size());
 
-        VecDoub r(M.cols());
+//        VecDoub r(M.cols());
 
-        for (size_t i = 0; i < M.cols(); ++i){
-            double tmp = 0.0;
-            for (size_t j = 0; j < M.rows(); ++j){
-                tmp += v(j)*M(j,i);
-            }
-            r(i) = tmp;
-        }
-        return r;
-    }
-    inline MatDoub operator*(const MatDoub &M1,const MatDoub &M2){
+//        for (size_t i = 0; i < M.cols(); ++i){
+//            double tmp = 0.0;
+//            for (size_t j = 0; j < M.rows(); ++j){
+//                tmp += v(j)*M(j,i);
+//            }
+//            r(i) = tmp;
+//        }
+//        return r;
+//    }
+//    inline MatDoub operator*(const MatDoub &M1,const MatDoub &M2){
 
-        assert(M1.cols() == M2.rows());
+//        assert(M1.cols() == M2.rows());
 
-        const size_t m = M1.rows();
-        const size_t n = M2.cols();
-        const size_t p = M1.cols();
-        MatDoub R(m,n);
+//        const size_t m = M1.rows();
+//        const size_t n = M2.cols();
+//        const size_t p = M1.cols();
+//        MatDoub R(m,n);
 
-        for (size_t i = 0; i < m ; ++i){
-            for (size_t j = 0; j < n; ++j){
-                double temp = 0.0;
-                for (size_t k = 0; k < p; ++k){
-                    temp+=M1(i,k)*M2(k,j);
-                }
-                R(i,j) = temp;
-            }
-        }
-        return R;
-    }
+//        for (size_t i = 0; i < m ; ++i){
+//            for (size_t j = 0; j < n; ++j){
+//                double temp = 0.0;
+//                for (size_t k = 0; k < p; ++k){
+//                    temp+=M1(i,k)*M2(k,j);
+//                }
+//                R(i,j) = temp;
+//            }
+//        }
+//        return R;
+//    }
 
-    inline MatDoub diadic_product(const VecDoub &v1,const VecDoub &v2){
-        MatDoub R(v1.size(),v2.size());
+//    inline MatDoub diadic_product(const VecDoub &v1,const VecDoub &v2){
+//        MatDoub R(v1.size(),v2.size());
 
-        for (size_t i = 0; i < v1.size(); ++i){
-            for (size_t j = 0; j < v2.size(); ++j){
-                R(i,j) = v1(i)*v2(j);
-            }
-        }
-        return R;
-    }
-    inline Matrix<double,4> diadic_product(const VecDoub &v1,const VecDoub &v2,const VecDoub &v3,const VecDoub &v4){
-        Matrix<double,4> R(v1.size(),v2.size(),v3.size(),v4.size());
+//        for (size_t i = 0; i < v1.size(); ++i){
+//            for (size_t j = 0; j < v2.size(); ++j){
+//                R(i,j) = v1(i)*v2(j);
+//            }
+//        }
+//        return R;
+//    }
+//    inline Matrix<double,4> diadic_product(const VecDoub &v1,const VecDoub &v2,const VecDoub &v3,const VecDoub &v4){
+//        Matrix<double,4> R(v1.size(),v2.size(),v3.size(),v4.size());
 
-        for (size_t i = 0; i < v1.size(); ++i){
-            for (size_t j = 0; j < v2.size(); ++j){
-                for (size_t k = 0; k < v3.size(); ++k){
-                    for (size_t l = 0; l < v4.size(); ++l){
-                        R(i,j,k,l) = v1(i)*v2(j)*v3(k)*v4(l);
-                    }
-                }
+//        for (size_t i = 0; i < v1.size(); ++i){
+//            for (size_t j = 0; j < v2.size(); ++j){
+//                for (size_t k = 0; k < v3.size(); ++k){
+//                    for (size_t l = 0; l < v4.size(); ++l){
+//                        R(i,j,k,l) = v1(i)*v2(j)*v3(k)*v4(l);
+//                    }
+//                }
 
-            }
-        }
-        return R;
-    }
+//            }
+//        }
+//        return R;
+//    }
     /***********************************************************/
     //Para contraccion de tensores (in construction)
     //Tensor reduction facilities

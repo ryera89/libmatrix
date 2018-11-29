@@ -131,7 +131,7 @@ struct Matrix_Slice<4>{
 //        return i*_strides[0] + j*_strides[1] + k*_strides[2] + l;
 //    }
     constexpr size_t operator()(size_t i,size_t j,size_t k,size_t l) const noexcept{
-        return i*_strides[0] + j*_strides[1] + k*_strides[2] + l;
+        return i*_strides[0] + j*_strides[1] + k*_strides[2] + l*_strides[3];
     }
 
 };
@@ -173,7 +173,7 @@ struct Matrix_Slice<3>{
 //        return i*_strides[0] + j*_strides[1] + k;
 //    }
     constexpr size_t operator()(size_t i,size_t j,size_t k) const noexcept{
-        return i*_strides[0] + j*_strides[1] + k;
+        return i*_strides[0] + j*_strides[1] + k*_strides[2];
     }
 
 };
@@ -212,7 +212,7 @@ struct Matrix_Slice<2>{
 //        return i*_strides[0] + j;
 //    }
     constexpr size_t operator()(size_t i,size_t j) const noexcept {
-        return i*_strides[0] + j;
+        return i*_strides[0] + j*_strides[1];
     }
 
 };
@@ -313,7 +313,7 @@ constexpr size_t do_slice_dim(const Matrix_Slice<N> &os,Matrix_Slice<N> &ns,cons
     if constexpr (std::is_same_v<S,Slice>){
         assert(s._start + s._length <= os._extents[N-Dim]);
         ns._extents[N-Dim] = s._length;
-        ns._strides[N-Dim] = os._strides[N-Dim];
+        ns._strides[N-Dim] = os._strides[N-Dim]*s._stride;
         ns._size *= ns._extents[N-Dim];
         start = os._strides[N-Dim]*s._start;
     }else{    //then is an size_t type or convertible to it.
@@ -355,6 +355,7 @@ constexpr void slice_dim(size_t n,const Matrix_Slice<N> &os,Matrix_Slice<N-1> &n
 
 }
 /*****************************Clase para referenciar matrices****************************************************************/
+//TODO VALORAR IMPLEMENTACION DE MATRIX_REF_ITERATOR
 //MATRIX_REF
 template<typename T,size_t N>
 class Matrix_Ref
@@ -373,95 +374,42 @@ public:
 
     T* data(){return _ptr;}
     const T* data()const{return _ptr;}
-
-    T* begin(){return _ptr;}
-    const T* begin()const{return _ptr;}
-
-    T* end(){return _ptr + _desc._size;}
-    const T* end()const{return _ptr + _desc._size;}
-
-    const matrix_impl::Matrix_Slice<N>& descriptor() const{
-        return _desc;
-    }
-
-    size_t size() const {return _desc._size;}
-
+    const matrix_impl::Matrix_Slice<N>& descriptor() const noexcept{return _desc;}
+    size_t size() const noexcept {return _desc._size;}
     size_t extent(size_t n) const{
         assert(n < N);
         return _desc._extents[n];
     }
-
-    //TODO implementar un iterador para esta clase
-    //TODO valorar si esto vale la pena
-    template<typename R = T*>
-    std::enable_if_t<(N==1),R>
-    end(){return (_ptr + _desc._size);}
-    template<typename R = const T*>
-    std::enable_if_t<(N==1),R>
-    end() const{return (_ptr + _desc._size);}
-
-    //TODO valorar si esto hay que removerlo
-    size_t rows() const {return extent(0);}
-    size_t columns() const {return extent(1);}
-
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
-    operator[](size_t i){
-        return row(i);
-    }
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
-    operator[](size_t i) const{
-        return row(i);
-    }
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<T,N-1>,T&>
-    row(size_t i){
+    matrix_impl::Matrix_Ref<T,N-1> row(size_t i){
         assert(i < extent(0));
-        if constexpr (N>=2){
-            Matrix_Slice<N-1> row;
-            slice_dim<0>(i,_desc,row);
-            return {data(),row};
-        }else{
-            return _ptr[i];
-        }
+        Matrix_Slice<N-1> row;
+        slice_dim<0>(i,_desc,row);
+        return {data(),row};
     }
-    std::conditional_t<(N>=2),matrix_impl::Matrix_Ref<const T,N-1>,const T&>
+    matrix_impl::Matrix_Ref<const T,N-1>
     row(size_t i) const{
         assert(i < extent(0));
-        if constexpr (N>=2){
-            matrix_impl::Matrix_Slice<N-1> row;
-            matrix_impl::slice_dim<0>(i,_desc,row);
-            return {data(),row};
-        }else{
-            return _ptr[i];
-        }
-
+        matrix_impl::Matrix_Slice<N-1> row;
+        matrix_impl::slice_dim<0>(i,_desc,row);
+        return {data(),row};
     }
-    //TODO valorar esta implementacion
-    /*template<typename Ref = matrix_impl::Matrix_Ref<T,N-1>>
-    std::enable_if_t<(N>=2),Ref>
-    column(size_t i){
-        matrix_impl::Matrix_Slice<N-1> col;
-        matrix_impl::slice_dim<1>(i,_desc,col);
-        return {data(),col};
+    matrix_impl::Matrix_Ref<T,N-1> operator[](size_t i){
+        return row(i);
     }
-    template<typename Ref = matrix_impl::Matrix_Ref<const T,N-1>>
-    std::enable_if_t<(N>=2),Ref>
-    column(size_t i) const{
-        matrix_impl::Matrix_Slice<N-1> col;
-        matrix_impl::slice_dim<1>(i,_desc,col);
-        return {data(),col};
-    }*/
-
+    matrix_impl::Matrix_Ref<const T,N-1> operator[](size_t i) const{
+        return row(i);
+    }
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_element<Args...>(), T&>
     operator()(Args... args){
         assert(matrix_impl::check_bounds(_desc,args...));
-        return *(data() + _desc(args...));
+        return _ptr[_desc(args...)];
     }
     template<typename... Args>
     std::enable_if_t<matrix_impl::requesting_element<Args...>(),const T&>
     operator()(Args... args) const{
         assert(matrix_impl::check_bounds(_desc,args...));
-        return *(data() + _desc(args...));
+        return _ptr[_desc(args...)];
     }
 
     template<typename... Args>
@@ -482,8 +430,132 @@ public:
          return {data(),d};
     }
 };
-    //TODO Matrix_Ref<T,2>
-    //TODO Matrix_Ref<T,1>
+    template<typename T>
+    class Matrix_Ref<T,2>{
+       Matrix_Slice<2> _desc;
+       T* _ptr;
+
+    public:
+       static constexpr size_t order = 2;
+       using value_type = T;
+
+       Matrix_Ref(T *p,const Matrix_Slice<2> &d):_desc{d},_ptr{p+d._start}{}
+       //TODO Faltan constructores aqui...
+
+       T* data() noexcept{return _ptr;}
+       const T* data() const noexcept{return _ptr;}
+       const matrix_impl::Matrix_Slice<2>& descriptor() const noexcept { return _desc; }
+       size_t size() const noexcept {return _desc._size;}
+       size_t extent(size_t n) const{
+           assert(n < 2);
+           return _desc._extents[n];
+       }
+       size_t rows() const noexcept{return extent(0);}
+       size_t cols() const noexcept{return extent(1);}
+
+       matrix_impl::Matrix_Ref<T,1> row(size_t i){
+           assert(i < extent(0));
+           matrix_impl::Matrix_Slice<1> row;
+           matrix_impl::slice_dim<0>(i,_desc,row);
+           return {data(),row};
+       }
+       matrix_impl::Matrix_Ref<const T,1> row(size_t i) const{
+           assert(i < extent(0));
+           matrix_impl::Matrix_Slice<1> row;
+           matrix_impl::slice_dim<0>(i,_desc,row);
+           return {data(),row};
+       }
+       matrix_impl::Matrix_Ref<T,1> operator[](size_t i){
+           return row(i);
+       }
+       matrix_impl::Matrix_Ref<const T,1> operator[](size_t i) const{
+           return row(i);
+       }
+       T& operator()(size_t i,size_t j){
+           assert(i < rows() && j < cols());
+           return _ptr[_desc(i,j)];
+       }
+       const T& operator()(size_t i,size_t j) const{
+           assert(i < rows() && j < cols());
+           return _ptr[_desc(i,j)];
+       }
+       template<typename... Args>
+       std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<T,2>>
+       operator()(Args... args){
+            matrix_impl::Matrix_Slice<2> d;
+            d._size = 1;
+            d._start = matrix_impl::do_slice(_desc,d,args...);
+            return {data(),d};
+       }
+       template<typename... Args>
+       std::enable_if_t<matrix_impl::requesting_slice<Args...>(),matrix_impl::Matrix_Ref<const T,2>>
+       operator()(Args... args) const{
+            matrix_impl::Matrix_Slice<2> d;
+            d._size = 1;
+            matrix_impl::do_slice(_desc,d,args...);
+            return {data(),d};
+       }
+    };
+    template<typename T>
+    class Matrix_Ref<T,1>{
+        Matrix_Slice<1> _desc;
+        T* _ptr;
+
+     public:
+        static constexpr size_t order = 1;
+        using value_type = T;
+
+        Matrix_Ref(T *p,const Matrix_Slice<1> &d):_desc{d},_ptr{p+d._start}{}
+        //TODO Faltan constructores aqui...
+
+        T* data() noexcept{return _ptr;}
+        const T* data() const noexcept{return _ptr;}
+        const matrix_impl::Matrix_Slice<1>& descriptor() const noexcept { return _desc; }
+        size_t size() const noexcept {return _desc._size;}
+
+        T& row(size_t i){
+            assert(i < size());
+            return _ptr[_desc(i)];
+        }
+        const T& row(size_t i) const{
+            assert(i < size());
+            return _ptr[_desc(i)];
+        }
+
+        T& operator[](size_t i){
+            return row(i);
+        }
+        const T& operator[](size_t i) const{
+            return row(i);
+        }
+        T& operator()(size_t i){
+            assert(i < size());
+            return _ptr[_desc(i)];
+        }
+        const T& operator()(size_t i) const{
+            assert(i < size());
+            return _ptr[_desc(i)];
+        }
+        matrix_impl::Matrix_Ref<T,1> operator()(const Slice &s){
+             matrix_impl::Matrix_Slice<1> d;
+             d._start = s._start;
+             d._size = s._length;
+             d._extents[0] = s._length;
+             d._strides[0] = s._stride;
+             //d._start = matrix_impl::do_slice(_desc,d,args...);
+             return {data(),d};
+        }
+        matrix_impl::Matrix_Ref<const T,1> operator()(const Slice &s) const{
+             matrix_impl::Matrix_Slice<1> d;
+             d._start = s._start;
+             d._size = s._length;
+             d._extents[0] = s._length;
+             d._strides[0] = s._stride;
+             //d._start = matrix_impl::do_slice(_desc,d,args...);
+             return {data(),d};
+        }
+
+    };
     template<typename T>
     class Matrix_Ref<T,0>{
         T* _ptr_elem;
@@ -511,7 +583,8 @@ public:
     template<typename U,typename T>
     inline void assing_slice_vals(const Matrix_Ref<U,1> &ref,Matrix_Ref<T,1> &mref){
         static_assert(std::is_convertible_v<U,T>,"assign_slice_vals: Incompatible elements type.");
-        std::copy(ref.begin(),ref.end(),mref.begin());
+        assert(ref.size() == mref.size());
+        for (size_t i = 0; i < mref.size(); ++i) mref(i) = ref(i);
     }
     template<typename U,typename T,size_t N>
     inline void assing_slice_vals(const Matrix_Ref<U,N> &ref,Matrix_Ref<T,N> &mref){
