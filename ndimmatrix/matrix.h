@@ -7,6 +7,7 @@
 #include <vector>
 #include "matrix_impl.h"
 #include <cmath>
+#include "mkl.h"
 
 template<typename T,size_t N>
 class Matrix
@@ -219,6 +220,9 @@ public:
          return {data(),d};
     }
 };
+
+    enum class Matrix_Type{GEN,SYMM,HER,UTR,LTR};
+    //GEN:General, SYMM:symmetric, HER:hemitian, UTR:upper_triangular, LTR: lower triangular
     template<typename T>
     class Matrix<T,2>{
          matrix_impl::Matrix_Slice<2> _desc;
@@ -738,6 +742,49 @@ public:
     inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
         Matrix<RT,N> res(m1);
         res-=m2;
+        return res;
+    }
+
+    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+    inline RT operator*(const Matrix<T1,1> &v1,const Matrix<T2,1> &v2){
+        return std::inner_product(v1.begin(),v1.end(),v2.begin(),0.0);
+    }
+    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+    inline Matrix<RT,1> operator*(const Matrix<T1,2> &m,const Matrix<T2,1> &v){
+        assert(m.cols() == v.size());
+        Matrix<RT,1> res(m.rows());
+        for (size_t i = 0; i < m.rows();++i){
+            res(i) = std::inner_product(m.row(i).data(),m.row(i).data() + m.cols(),v.begin(),0.0);
+        }
+        return res;
+    }
+    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+    inline Matrix<RT,2> operator*(const Matrix<T1,2> &m1,const Matrix<T2,2> &m2){
+        size_t m1m = m1.rows();
+        size_t m2n = m2.cols();
+        size_t m1n = m1.cols();
+        size_t m2m = m2.rows();
+        assert(m1n  == m2m);
+        Matrix<RT,2> res(m1m,m2n);
+        //double-double
+        if constexpr (std::is_same_v<T1,double> && std::is_same_v<T2,double>){
+           printf("dgemm \n");
+           cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                        m1m,m2n,m1n,1.0,m1.data(),m1n,m2.data(),m2n,0.0,res.data(),m2n);
+        //TODO implementar uso de cblas con float y complejos
+        }else{
+            //NAIVE implementation
+            printf("naive \n");
+            for (size_t i = 0; i < m1m; ++i){
+                for (size_t j = 0; j < m2n; ++j){
+                    RT tmp(0);
+                    for (size_t k = 0; k < m1n; ++k){
+                        tmp+=m1(i,k)*m2(k,j);
+                    }
+                    res(i,j) = tmp;
+                }
+            }
+        }
         return res;
     }
 //    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>

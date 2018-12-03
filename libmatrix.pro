@@ -13,7 +13,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 
-QMAKE_CXXFLAGS += -std=c++1z
+QMAKE_CXXFLAGS += -std=c++1z #-fopenmp
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -33,7 +33,16 @@ SOURCES += \
 HEADERS += \
     ndimmatrix/matrix.h \
     ndimmatrix/matrix_impl.h
+
 unix {
     target.path = /usr/lib
     INSTALLS += target
+
+    INCLUDEPATH += /opt/intel/compilers_and_libraries/linux/mkl/include/
+    INCLUDEPATH += /usr/include/x86_64-linux-gnu/c++/8/
+    LIBS += -L/opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/ \
+    -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+    -L/opt/intel/compilers_and_libraries/linux/lib/intel64/  \
+    -liomp5 -lpthread -dl -lm
 }
+
