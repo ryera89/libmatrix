@@ -630,10 +630,6 @@ public:
             return res;
         }
     };
-
-    //typedef Matrix<double,1> VecDoub;
-    //typedef Matrix<double,2> MatDoub;
-
     template<typename T>
     class Matrix<T,0>{
         T elem;
@@ -658,63 +654,92 @@ public:
 
     };
 
+    /****************************************************************************/
+    //output operations
+    //TODO: enable_if T tiene ostream definido
+    template<typename T>
+    inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2> &m){
+        std::ios_base::fmtflags ff = std::ios::scientific;
+        ff |= std::ios::showpos;
+        os.setf(ff);
+        for (size_t i = 0; i < m.rows(); ++i){
+            for (size_t j = 0; j < m.cols(); ++j)
+                os << m(i,j) << '\t' ;
+            os << '\n';
+        }
+        os.unsetf(ff);
+        return os;
+    }
+    template<typename T>
+    std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
+        std::ios_base::fmtflags ff = std::ios::scientific;
+        ff |= std::ios::showpos;
+        os.setf(ff);
+        for (size_t i = 0; i < m.size(); ++i){
+            os << m(i) << '\n';
+        }
+        os.unsetf(ff);
+        return os;
+    }
+    /*********************************************************************************/
 
 //    //TODO: Think about type asserts
 //    //Matrix Binary Arithmetic Operations
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
-//        Matrix<RT,N> res(m);
-//        res+=val;
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
-//        Matrix<RT,N> res(m);
-//        res+=val;
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
-//        Matrix<RT,N> res(m);
-//        res-=val;
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
-//        Matrix<RT,N> res(m.descriptor()._extents);
-//        std::transform(m.begin(),m.end(),res.begin(),[&val](const T &elem){return val-elem;});
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
-//        Matrix<RT,N> res(m);
-//        res*=val;
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
-//        Matrix<RT,N> res(m);
-//        res*=val;
-//        return res;
-//    }
-//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-//    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
-//        Matrix<RT,N> res(m);
-//        res/=val;
-//        return res;
-//    }
-//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-//    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-//        Matrix<RT,N> res(m1);
-//        res+=m2;
-//        return res;
-//    }
-//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-//    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-//        Matrix<RT,N> res(m1);
-//        res-=m2;
-//        return res;
-//    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
+        Matrix<RT,N> res(m);
+        res+=val;
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
+        Matrix<RT,N> res(m);
+        res+=val;
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
+        Matrix<RT,N> res(m);
+        res-=val;
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
+        Matrix<RT,N> res(m);
+        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val-elem;});
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
+        Matrix<RT,N> res(m);
+        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val*elem;});
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
+        Matrix<RT,N> res(m);
+        res*=val;
+        return res;
+    }
+    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
+        //TODO controlar division por cero
+        Matrix<RT,N> res(m);
+        res/=val;
+        return res;
+    }
+    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+        Matrix<RT,N> res(m1);
+        res+=m2;
+        return res;
+    }
+    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+        Matrix<RT,N> res(m1);
+        res-=m2;
+        return res;
+    }
 //    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
 //    inline Matrix<RT,1> operator *(const Matrix<T1,2> &m2,const Matrix<T2,1> m1){
 //        assert(m2.columns() == m1.size());
@@ -725,16 +750,11 @@ public:
 //        return res;
 //    }
 
-
-
 //    //TODO optimizar estas operaciones y para tipos genericos
-
 //    inline double operator*(const matrix_impl::Matrix_Ref<double,1> &mref,const Matrix<double,1> &v){
 //        assert(mref.size() == v.size());
-
 //        double temp = 0.0;
 //        for (size_t i = 0; i < v.size(); ++i)  temp+=mref(i)*v(i);
-
 //        return temp;
 //    }
 
@@ -829,102 +849,76 @@ public:
     }*/
 
     /********************************************************/
-    //OS operations
-    //TODO: enable_if T tiene ostream definido
-    template<typename T>
-inline  std::ostream& operator << (std::ostream& os,const Matrix<T,2> &m){
-        //std::ios_base::fmtflags ff = std::ios::scientific;
-        //ff |= std::ios::showpos;
-        //os.setf(ff);
-        for (size_t i = 0; i < m.rows(); ++i){
-           for (size_t j = 0; j < m.cols(); ++j)
-                os << m(i,j) << '\t' ;
-            os << '\n';
-        }
-        //os.unsetf(ff);
-        return os;
-    }
-    template<typename T>
-    std::ostream& operator << (std::ostream& os,const Matrix<T,1> &m){
-        std::ios_base::fmtflags ff = std::ios::scientific;
-        ff |= std::ios::showpos;
-        os.setf(ff);
-        for (size_t i = 0; i < m.size(); ++i){
-            os << m(i) << '\n';
-        }
-        os.unsetf(ff);
-        return os;
-    }
-    template<typename T>
-    std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,2> &m);/*{
-        if (ofs.is_open()){
-            std::ios_base::fmtflags ff = std::ios::scientific;
-            ff |= std::ios::showpos;
-            ofs.setf(ff);
-            for (size_t i = 0; i < m.rows(); ++i){
-                for (size_t j = 0; j < m.cols(); ++j)
-                    ofs << m(i,j) << '\t' ;
-                ofs << std::endl;
-            }
-            ofs.unsetf(ff);
-        }
-        return ofs;
-    }*/
-    template<typename T>
-    std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,1> &m);/*{
-        if (ofs.is_open()){
-            std::ios_base::fmtflags ff = std::ios::scientific;
-            ff |= std::ios::showpos;
-            ofs.setf(ff);
-            for (size_t i = 0; i < m.size(); ++i){
-                ofs << i << "**" << m(i) << '\n';
-            }
-            ofs.unsetf(ff);
-        }
-        return ofs;
-    }*/
-    template<typename T>
-    inline std::ostream& operator << (std::ostream& os,const Matrix<T,3> &m){
-        //if (ofs.is_open()){
-            //std::ios_base::fmtflags ff = std::ios::scientific;
-            //ff |= std::ios::showpos;
-            //os.setf(ff);
-            for (size_t i = 0; i < m.extent(2); ++i){
-                os << "(:,:," << i << ") \n";
-                for (size_t j = 0; j < m.extent(0); ++j){
-                    for (size_t k = 0; k < m.extent(1); ++k){
+//    template<typename T>
+//    std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,2> &m);/*{
+//        if (ofs.is_open()){
+//            std::ios_base::fmtflags ff = std::ios::scientific;
+//            ff |= std::ios::showpos;
+//            ofs.setf(ff);
+//            for (size_t i = 0; i < m.rows(); ++i){
+//                for (size_t j = 0; j < m.cols(); ++j)
+//                    ofs << m(i,j) << '\t' ;
+//                ofs << std::endl;
+//            }
+//            ofs.unsetf(ff);
+//        }
+//        return ofs;
+//    }*/
+//    template<typename T>
+//    std::ofstream& operator << (std::ofstream& ofs,const Matrix<T,1> &m);/*{
+//        if (ofs.is_open()){
+//            std::ios_base::fmtflags ff = std::ios::scientific;
+//            ff |= std::ios::showpos;
+//            ofs.setf(ff);
+//            for (size_t i = 0; i < m.size(); ++i){
+//                ofs << i << "**" << m(i) << '\n';
+//            }
+//            ofs.unsetf(ff);
+//        }
+//        return ofs;
+//    }*/
+//    template<typename T>
+//    inline std::ostream& operator << (std::ostream& os,const Matrix<T,3> &m){
+//        //if (ofs.is_open()){
+//            //std::ios_base::fmtflags ff = std::ios::scientific;
+//            //ff |= std::ios::showpos;
+//            //os.setf(ff);
+//            for (size_t i = 0; i < m.extent(2); ++i){
+//                os << "(:,:," << i << ") \n";
+//                for (size_t j = 0; j < m.extent(0); ++j){
+//                    for (size_t k = 0; k < m.extent(1); ++k){
 
-                            os << m(j,k,i) << '\t' ;
-                    }
+//                            os << m(j,k,i) << '\t' ;
+//                    }
 
-                    os << "\n";
-                }
-            }
-            //os.unsetf(ff);
-            return os;
-        //}
-    }
-    template<typename T>
-    std::ostream& operator << (std::ostream& os,const Matrix<T,4> &m);/*{
-        //if (ofs.is_open()){
-            std::ios_base::fmtflags ff = std::ios::scientific;
-            ff |= std::ios::showpos;
-            os.setf(ff);
-            for (size_t i = 0; i < m.extent(3); ++i){
-                for (size_t j = 0; j < m.extent(2); ++j){
-                    os << "(:,:," << j << ", " << i << ") \n";
-                    for (size_t k = 0; k < m.extent(0); ++k){
-                        for (size_t l = 0; l < m.extent(1); ++l){
-                            os << m(k,l,j,i) << '\t' ;
-                        }
-                        os << "\n";
-                    }
-                }
-            }
-            os.unsetf(ff);
-            return os;
-        //}
-    }*/
+//                    os << "\n";
+//                }
+//            }
+//            //os.unsetf(ff);
+//            return os;
+//        //}
+//    }
+//    template<typename T>
+//    std::ostream& operator << (std::ostream& os,const Matrix<T,4> &m);/*{
+//        //if (ofs.is_open()){
+//            std::ios_base::fmtflags ff = std::ios::scientific;
+//            ff |= std::ios::showpos;
+//            os.setf(ff);
+//            for (size_t i = 0; i < m.extent(3); ++i){
+//                for (size_t j = 0; j < m.extent(2); ++j){
+//                    os << "(:,:," << j << ", " << i << ") \n";
+//                    for (size_t k = 0; k < m.extent(0); ++k){
+//                        for (size_t l = 0; l < m.extent(1); ++l){
+//                            os << m(k,l,j,i) << '\t' ;
+//                        }
+//                        os << "\n";
+//                    }
+//                }
+//            }
+//            os.unsetf(ff);
+//            return os;
+//        //}
+//    }*/
 
 
 

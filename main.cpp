@@ -8,7 +8,7 @@ constexpr int increment(int x){return ++x;}
 
 int main(){
 
-    Matrix<double,2> M = {{1,2,3,4},
+    Matrix<int,2> M = {{1,2,3,4},
                           {5,6,7,8},
                           {9,10,11,12}};
 
@@ -26,6 +26,14 @@ int main(){
     cout << M.column(3)(2) << endl;
 
     cout << col2 << endl;
+
+    cout << col2*5 << endl;
+
+    double val = 0.5;
+
+    Matrix<double,2> Mhalf = 1 - M*val;
+
+    cout << Mhalf << endl;
 
 //    char answer = 'y';
 //    int x;
