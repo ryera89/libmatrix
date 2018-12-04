@@ -94,6 +94,30 @@ int main(){
     cout << "vector_size = " << VecX.size() << " " << " NO_MKL daspy :" << "elapsed_time = " << ops_no_mkl << "\n";
     cout << "vector_size = " << VecX.size() << " "  <<" MKL daspy    :" << "elapsed_time = " << ops_mkl << "\n";
 
+    Matrix<double,2,Matrix_Type::SYMM> sM(4);
+
+    sM = 4;
+
+    for (size_t i = 0; i < 4; ++i){
+        for (size_t j = 0; j < 4; ++j){
+            cout << sM(i,j) << "\t";
+        }
+        cout << "\n";
+    }
+
+    for (size_t i = 0; i < 4; ++i){
+        for (size_t j = 0; j < 4; ++j){
+            sM(i,j) = i+j;
+        }
+    }
+
+
+    for (size_t i = 0; i < 4; ++i){
+        for (size_t j = 0; j < 4; ++j){
+            cout << sM(i,j) << "\t";
+        }
+        cout << "\n";
+    }
 
 //    char answer = 'y';
 //    int x;
