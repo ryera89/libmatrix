@@ -11,14 +11,13 @@ constexpr int increment(int x){return ++x;}
 int main(){
 
     Matrix<int,2> M = {{1,2,3,4},
-                          {5,6,7,8},
-                          {9,10,11,12}};
+                       {5,6,7,8},
+                       {9,10,11,12}};
 
     M(0,0) = 343;
 
     cout << M << endl;
 
-    //FIXME: Matrix Slicing must has in range values
     Matrix<double,2> M_slice = M(1,Slice(0,4,1));
 
     cout << M_slice << endl;

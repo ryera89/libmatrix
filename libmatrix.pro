@@ -38,11 +38,11 @@ unix {
     target.path = /usr/lib
     INSTALLS += target
 
-    INCLUDEPATH += /opt/intel/compilers_and_libraries/linux/mkl/include/
+    INCLUDEPATH += /opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/mkl/include/
     INCLUDEPATH += /usr/include/x86_64-linux-gnu/c++/8/
-    LIBS += -L/opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/ \
+    LIBS += -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/mkl/lib/intel64/ \
     -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
-    -L/opt/intel/compilers_and_libraries/linux/lib/intel64/  \
+    -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/lib/intel64/  \
     -liomp5 -lpthread -dl -lm
 }
 
