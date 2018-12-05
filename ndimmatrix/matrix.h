@@ -11,15 +11,22 @@
 
 enum class Matrix_Type{GEN,SYMM,HER,UTR,LTR,SPRC};
 //GEN:General, SYMM:symmetric, HER:hemitian, UTR:upper_triangular, LTR: lower triangular, SPRC:sparce
-template<typename T,size_t N,Matrix_Type type = Matrix_Type::GEN>
-class Matrix
-{
+enum class Matrix_Storage_Scheme{FULL,UPP,LOW};
+//FULL: full storage //UPP:package upper triangular storage //LOW:package lower triangular storage
+
+template<typename T,size_t N,Matrix_Type type,Matrix_Storage_Scheme strg_sch>
+class Matrix{};
+
+template<typename T,size_t N,Matrix_Type mtype>
+class Matrix<T,N,mtype,Matrix_Storage_Scheme::FULL>{
 private:
     matrix_impl::Matrix_Slice<N> _desc;
     std::vector<T> _elems;
 public:
     //Common aliases
     static constexpr size_t order = N;
+    static constexpr Matrix_Type type = mtype;
+    static constexpr Matrix_Storage_Scheme storage = Matrix_Storage_Scheme::FULL;
     using value_type = T;
     using iterator = typename std::vector<T>::iterator;
     using const_iterator = typename std::vector<T>::const_iterator;
@@ -40,12 +47,12 @@ public:
     Matrix(Exts... exts):_desc(0,{exts...}),_elems(_desc._size){}
 
     template<typename U>
-    Matrix(const Matrix<U,N> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
+    Matrix(const Matrix<U,N,type,storage> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
         static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
     }
 
     template<typename U>
-    Matrix& operator = (const Matrix<U,N> &other){
+    Matrix& operator = (const Matrix<U,N,type,storage> &other){
         static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
         _desc = other._desc;
         _elems.assign(other.begin(),other.end());
@@ -110,15 +117,15 @@ public:
     }
 
     template<typename F>
-    Matrix<T,N>& apply(F fun){
+    Matrix& apply(F fun){
         std::for_each(begin(),end(),fun);
         return *this;
     }
 
     //Unary minus
-    Matrix<T,N> operator-() const
+    Matrix<T,N,type,storage> operator-() const
     {
-        Matrix<T,N> res(*this);
+        Matrix<T,N,type,storage> res(*this);
         std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
         return res;
     }
@@ -148,14 +155,14 @@ public:
         return *this;
     }
     template<typename U>
-    Matrix& operator+=(const Matrix<U,N> &m)
+    Matrix& operator+=(const Matrix<U,N,type,storage> &m)
     {
         assert(this->size() == m.size());
         std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
         return *this;
     }
     template<typename U>
-    Matrix& operator-=(const Matrix<U,N> &m)
+    Matrix& operator-=(const Matrix<U,N,type,storage> &m)
     {
         assert(this->size() == m.size());
         std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
@@ -222,14 +229,17 @@ public:
          return {data(),d};
     }
 };
-    template<typename T>
-    class Matrix<T,2>{
+
+    //TODO enable if constructors para los tipos de matrices
+    template<typename T,Matrix_Type mtype>
+    class Matrix<T,2,mtype,Matrix_Storage_Scheme::FULL>{
          matrix_impl::Matrix_Slice<2> _desc;
          std::vector<T> _elems;
     public:
          //Common aliases
-         static constexpr Matrix_Type type = Matrix_Type::GEN;
          static constexpr size_t order = 2;
+         static constexpr Matrix_Type type = mtype;
+         static constexpr Matrix_Storage_Scheme storage = Matrix_Storage_Scheme::FULL;
          using value_type = T;
          using iterator = typename std::vector<T>::iterator;
          using const_iterator = typename std::vector<T>::const_iterator;
@@ -248,11 +258,11 @@ public:
 
          explicit Matrix(size_t m,size_t n):_desc(0,m,n),_elems(m*n){}
          template<typename U>
-         Matrix(const Matrix<U,2> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
+         Matrix(const Matrix<U,2,type,storage> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
              static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
          }
          template<typename U>
-         Matrix& operator = (const Matrix<U,2> &other){
+         Matrix& operator = (const Matrix<U,2,type,storage> &other){
              static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
              _desc = other._desc;
              _elems.assign(other.begin(),other.end());
@@ -333,14 +343,14 @@ public:
 
          //Arithmetic ops
          template<typename F>
-         Matrix<T,2>& apply(F fun){
+         Matrix& apply(F fun){
              std::for_each(begin(),end(),fun);
              return *this;
          }
          //Unary minus
-         Matrix<T,2> operator-() const
+         Matrix<T,2,type,storage> operator-() const
          {
-             Matrix<T,2> res(*this);
+             Matrix<T,2,type,storage> res(*this);
              std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
              return res;
          }
@@ -371,14 +381,14 @@ public:
              return *this;
          }
          template<typename U>
-         Matrix& operator+=(const Matrix<U,2> &m)
+         Matrix& operator+=(const Matrix<U,2,type,storage> &m)
          {
              assert(rows() == m.rows() && cols() == m.cols());
              std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
              return *this;
          }
          template<typename U>
-         Matrix& operator-=(const Matrix<U,2> &m)
+         Matrix& operator-=(const Matrix<U,2,type,storage> &m)
          {
              assert(size() == m.size());
              std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
@@ -443,16 +453,16 @@ public:
          }
     };
 
-    //enum class PStorage_Scheme{UPP,LOW}; //UPP:upper triangular //LOW:lower traingular
+
     template<typename T>
-    class Matrix<T,2,Matrix_Type::SYMM>{
+    class Matrix<T,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::UPP>{
         size_t _dim;
         std::vector<T> _elems;
     public:
         //Common aliases
-        static constexpr Matrix_Type type = Matrix_Type::SYMM;
         static constexpr size_t order = 2;
-        //const PStorage_Scheme strg_scheme;
+        static constexpr Matrix_Type type = Matrix_Type::SYMM;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::UPP;
         using value_type = T;
         using iterator = typename std::vector<T>::iterator;
         using const_iterator = typename std::vector<T>::const_iterator;
@@ -471,16 +481,60 @@ public:
 
         explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
         template<typename U>
-        Matrix(const Matrix<U,2,type> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
         }
         template<typename U>
-        Matrix& operator = (const Matrix<U,2,type> &other){
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
             _dim = other.rows();
             _elems.assign(other.begin(),other.end());
             return *this;
 
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(i,j);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(i,j);
+                }
+            }
+            return *this;
         }
         Matrix& operator=(const T &val){
             std::fill(begin(),end(),val);
@@ -509,9 +563,9 @@ public:
             return *this;
         }
         //Unary minus
-        Matrix<T,2,type> operator-() const
+        Matrix<T,2,type,storage> operator-() const
         {
-            Matrix<T,2,type> res(*this);
+            Matrix<T,2,type,storage> res(*this);
             std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
             return res;
         }
@@ -542,17 +596,61 @@ public:
             return *this;
         }
         template<typename U>
-        Matrix& operator+=(const Matrix<U,2,type> &m)
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
         {
             assert(rows() == m.rows()); //symmetric matrizes are squared
             std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
             return *this;
         }
         template<typename U>
-        Matrix& operator-=(const Matrix<U,2,type> &m)
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
         {
             assert(rows() == m.rows()); //symmetric matrizes are squared
             std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) -= m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) += m(i,j);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) -= m(i,j);
+                }
+            }
             return *this;
         }
         T& operator()(size_t i,size_t j){
@@ -566,12 +664,474 @@ public:
             return _elems[j + 0.5*i*(2*_dim - i - 1)];
         }
     };
+
     template<typename T>
-    class Matrix<T,1>{
+    class Matrix<T,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::LOW>{
+        size_t _dim;
+        std::vector<T> _elems;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::SYMM;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::LOW;
+        using value_type = T;
+        using iterator = typename std::vector<T>::iterator;
+        using const_iterator = typename std::vector<T>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
+        template<typename U>
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.assign(other.begin(),other.end());
+            return *this;
+
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+            return *this;
+        }
+        Matrix& operator=(const T &val){
+            std::fill(begin(),end(),val);
+            return *this;
+        }
+        size_t extent(size_t n) const{
+            assert(n < 2);
+            return _dim;
+        }
+        size_t rows() const noexcept {return _dim;}
+        size_t cols() const noexcept {return _dim;}
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
+
+        //Arithmetic ops
+        template<typename F>
+        Matrix& apply(F fun){
+            std::for_each(begin(),end(),fun);
+            return *this;
+        }
+        //Unary minus
+        Matrix<T,2,type,storage> operator-() const
+        {
+            Matrix<T,2,type,storage> res(*this);
+            std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
+            return res;
+        }
+        //Arithmetic operations.
+        template<typename Scalar>
+        Matrix& operator+=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem+=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator-=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem-=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator*=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem*=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator/=(const Scalar& val)
+        {
+            //TODO valorar no permitir division por cero
+            std::for_each(begin(),end(),[&val](T &elem){elem/=val;});
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) -= m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        T& operator()(size_t i,size_t j){
+            assert(i < rows() && j < cols());
+            if (i < j) std::swap(i,j); //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
+        const T& operator()(size_t i,size_t j) const{
+            assert(i < rows() && j < cols());
+            if (i < j) std::swap(i,j); //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
+    };
+    template<typename T>
+    class Matrix<T,2,Matrix_Type::UTR,Matrix_Storage_Scheme::UPP>{
+        size_t _dim;
+        std::vector<T> _elems;
+        //TODO: pensar en mejor solucion
+        static constexpr T offtr_val = 0;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::UTR;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::UPP;
+        using value_type = T;
+        using iterator = typename std::vector<T>::iterator;
+        using const_iterator = typename std::vector<T>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
+        template<typename U>
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.assign(other.begin(),other.end());
+            return *this;
+        }
+        Matrix& operator=(const T &val){
+            std::fill(begin(),end(),val);
+            return *this;
+        }
+        size_t extent(size_t n) const{
+            assert(n < 2);
+            return _dim;
+        }
+        size_t rows() const noexcept {return _dim;}
+        size_t cols() const noexcept {return _dim;}
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
+
+        //Arithmetic ops
+        template<typename F>
+        Matrix& apply(F fun){
+            std::for_each(begin(),end(),fun);
+            return *this;
+        }
+        //Unary minus
+        Matrix<T,2,type,storage> operator-() const
+        {
+            Matrix<T,2,type,storage> res(*this);
+            std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
+            return res;
+        }
+        //Arithmetic operations.
+        template<typename Scalar>
+        Matrix& operator+=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem+=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator-=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem-=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator*=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem*=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator/=(const Scalar& val)
+        {
+            //TODO valorar no permitir division por cero
+            std::for_each(begin(),end(),[&val](T &elem){elem/=val;});
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
+            return *this;
+        }
+
+        T& operator()(size_t i,size_t j){
+            assert(i < rows() && j < cols() && i <= j);
+            //if (i > j) return offtr_val; //upper triangle storage
+            return _elems[j + 0.5*i*(2*_dim - i - 1)];
+        }
+        const T& operator()(size_t i,size_t j) const{
+            assert(i < rows() && j < cols());
+            if (i > j) return offtr_val; //upper triangle storage
+            return _elems[j + 0.5*i*(2*_dim - i - 1)];
+        }
+
+    };
+    template<typename T>
+    class Matrix<T,2,Matrix_Type::LTR,Matrix_Storage_Scheme::LOW>{
+        size_t _dim;
+        std::vector<T> _elems;
+        static constexpr T offtr_val = 0;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::LTR;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::LOW;
+        using value_type = T;
+        using iterator = typename std::vector<T>::iterator;
+        using const_iterator = typename std::vector<T>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
+        template<typename U>
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
+            static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.assign(other.begin(),other.end());
+            return *this;
+        }
+        Matrix& operator=(const T &val){
+            std::fill(begin(),end(),val);
+            return *this;
+        }
+        size_t extent(size_t n) const{
+            assert(n < 2);
+            return _dim;
+        }
+        size_t rows() const noexcept {return _dim;}
+        size_t cols() const noexcept {return _dim;}
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
+
+        //Arithmetic ops
+        template<typename F>
+        Matrix& apply(F fun){
+            std::for_each(begin(),end(),fun);
+            return *this;
+        }
+        //Unary minus
+        Matrix<T,2,type,storage> operator-() const
+        {
+            Matrix<T,2,type,storage> res(*this);
+            std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
+            return res;
+        }
+        //Arithmetic operations.
+        template<typename Scalar>
+        Matrix& operator+=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem+=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator-=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem-=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator*=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](T &elem){elem*=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator/=(const Scalar& val)
+        {
+            //TODO valorar no permitir division por cero
+            std::for_each(begin(),end(),[&val](T &elem){elem/=val;});
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
+            return *this;
+        }
+
+        T& operator()(size_t i,size_t j){
+            assert(i < rows() && j < cols() && i <= j);
+            //if (i < j) return offtr_val; //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
+        const T& operator()(size_t i,size_t j) const{
+            assert(i < rows() && j < cols());
+            if (i < j) return offtr_val; //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
+
+    };
+    template<typename T>
+    class Matrix<T,1,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL>{
         matrix_impl::Matrix_Slice<1> _desc;
         std::vector<T> _elems;
     public:
         static constexpr size_t order = 1;
+        static constexpr Matrix_Type type = Matrix_Type::GEN;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::FULL;
         using value_type = T;
         using iterator = typename std::vector<T>::iterator;
         using const_iterator = typename std::vector<T>::const_iterator;
@@ -592,12 +1152,12 @@ public:
         Matrix(const std::array<size_t,1> &exts):_desc{0,exts},_elems(_desc._size){}
 
         template<typename U>
-        Matrix(const Matrix<U,1> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
+        Matrix(const Matrix<U,1,type,storage> &other):_desc(other.descriptor()),_elems{other.begin(),other.end()}{
             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
         }
 
         template<typename U>
-        Matrix& operator = (const Matrix<U,1> &other){
+        Matrix& operator = (const Matrix<U,1,type,storage> &other){
             static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
             _desc = other._desc;
             _elems.assign(other.begin(),other.end());
@@ -657,19 +1217,19 @@ public:
 
         //Arithmetic ops
         template<typename F>
-        Matrix<T,1>& apply(F fun){
+        Matrix& apply(F fun){
             std::for_each(begin(),end(),fun);
             return *this;
         }
         template<typename F>
-        Matrix<T,1>& apply(const Matrix<T,1> &vec,F fun){
+        Matrix& apply(const Matrix<T,1,type,storage> &vec,F fun){
             std::transform(vec.begin(),vec.end(),this->begin(),fun);
             return *this;
         }
 
         //Unary minus
-        Matrix<T,1> operator-() const{
-            Matrix<T,1> res(*this);
+        Matrix<T,1,type,storage> operator-() const{
+            Matrix<T,1,type,storage> res(*this);
             std::for_each(res.begin(),res.end(),[](T &elem){elem = -elem;});
             return res;
         }
@@ -700,14 +1260,14 @@ public:
             return *this;
         }
         template<typename U>
-        Matrix& operator+=(const Matrix<U,1> &m)
+        Matrix& operator+=(const Matrix<U,1,type,storage> &m)
         {
             assert(this->size() == m.size());
             std::transform(begin(),end(),m.begin(),begin(),std::plus<T>());
             return *this;
         }
         template<typename U>
-        Matrix& operator-=(const Matrix<U,1> &m)
+        Matrix& operator-=(const Matrix<U,1,type,storage> &m)
         {
             assert(this->size() == m.size());
             std::transform(begin(),end(),m.begin(),begin(),std::minus<T>());
@@ -759,10 +1319,12 @@ public:
         }
     };
     template<typename T>
-    class Matrix<T,0>{
+    class Matrix<T,0,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL>{
         T elem;
     public:
         static constexpr size_t order = 0;
+        static constexpr Matrix_Type type = Matrix_Type::GEN;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::FULL;
         using value_type = T;
 
         Matrix(const T &val):elem(val){}
@@ -785,8 +1347,8 @@ public:
     /****************************************************************************/
     //output operations
     //TODO: enable_if T tiene ostream definido
-    template<typename T>
-    inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2> &m){
+    template<typename T,Matrix_Type type,Matrix_Storage_Scheme storage>
+    inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2,type,storage> &m){
         std::ios_base::fmtflags ff = std::ios::scientific;
         ff |= std::ios::showpos;
         os.setf(ff);
@@ -798,8 +1360,8 @@ public:
         os.unsetf(ff);
         return os;
     }
-    template<typename T>
-    std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
+    template<typename T,Matrix_Type type,Matrix_Storage_Scheme storage>
+    std::ostream &operator << (std::ostream &os,const Matrix<T,1,type,storage> &m){
         std::ios_base::fmtflags ff = std::ios::scientific;
         ff |= std::ios::showpos;
         os.setf(ff);
@@ -813,104 +1375,106 @@ public:
 
 //    //TODO: Think about type asserts
 //    //Matrix Binary Arithmetic Operations
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m);
-        res+=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res+=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res-=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m);
-        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val-elem;});
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
-        Matrix<RT,N> res(m);
-        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val*elem;});
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
-        Matrix<RT,N> res(m);
-        res*=val;
-        return res;
-    }
-    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
-    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
-        //TODO controlar division por cero
-        Matrix<RT,N> res(m);
-        res/=val;
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-        Matrix<RT,N> res(m1);
-        res+=m2;
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
-    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
-        Matrix<RT,N> res(m1);
-        res-=m2;
-        return res;
-    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator+(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m);
+//        res+=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator+(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res+=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator-(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res-=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator-(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m);
+//        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val-elem;});
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator*(const Scalar &val,const Matrix<T,N> &m){
+//        Matrix<RT,N> res(m);
+//        std::for_each(res.begin(),res.end(),[&val](T &elem){elem = val*elem;});
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator*(const Matrix<T,N> &m,const Scalar &val){
+//        Matrix<RT,N> res(m);
+//        res*=val;
+//        return res;
+//    }
+//    template<typename Scalar,typename T,typename RT = std::common_type_t<Scalar,T>,size_t N>
+//    inline Matrix<RT,N> operator/(const Matrix<T,N> &m,const Scalar &val){
+//        //TODO controlar division por cero
+//        Matrix<RT,N> res(m);
+//        res/=val;
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+//    inline Matrix<RT,N> operator+(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+//        Matrix<RT,N> res(m1);
+//        res+=m2;
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>,size_t N>
+//    inline Matrix<RT,N> operator-(const Matrix<T1,N> &m1,const Matrix<T2,N> &m2){
+//        Matrix<RT,N> res(m1);
+//        res-=m2;
+//        return res;
+//    }
 
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
-    inline RT operator*(const Matrix<T1,1> &v1,const Matrix<T2,1> &v2){
-        return std::inner_product(v1.begin(),v1.end(),v2.begin(),0.0);
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
-    inline Matrix<RT,1> operator*(const Matrix<T1,2> &m,const Matrix<T2,1> &v){
-        assert(m.cols() == v.size());
-        Matrix<RT,1> res(m.rows());
-        for (size_t i = 0; i < m.rows();++i){
-            res(i) = std::inner_product(m.row(i).data(),m.row(i).data() + m.cols(),v.begin(),0.0);
-        }
-        return res;
-    }
-    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
-    inline Matrix<RT,2> operator*(const Matrix<T1,2> &m1,const Matrix<T2,2> &m2){
-        size_t m1m = m1.rows();
-        size_t m2n = m2.cols();
-        size_t m1n = m1.cols();
-        size_t m2m = m2.rows();
-        assert(m1n  == m2m);
-        Matrix<RT,2> res(m1m,m2n);
-        //double-double
-        if constexpr (std::is_same_v<T1,double> && std::is_same_v<T2,double>){
-           printf("dgemm \n");
-           cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
-                        m1m,m2n,m1n,1.0,m1.data(),m1n,m2.data(),m2n,0.0,res.data(),m2n);
-        //TODO implementar uso de cblas con float y complejos
-        }else{
-            //NAIVE implementation
-            printf("naive \n");
-            for (size_t i = 0; i < m1m; ++i){
-                for (size_t j = 0; j < m2n; ++j){
-                    RT tmp(0);
-                    for (size_t k = 0; k < m1n; ++k){
-                        tmp+=m1(i,k)*m2(k,j);
-                    }
-                    res(i,j) = tmp;
-                }
-            }
-        }
-        return res;
-    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+//    inline RT operator*(const Matrix<T1,1> &v1,const Matrix<T2,1> &v2){
+//        return std::inner_product(v1.begin(),v1.end(),v2.begin(),0.0);
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+//    inline Matrix<RT,1> operator*(const Matrix<T1,2> &m,const Matrix<T2,1> &v){
+//        assert(m.cols() == v.size());
+//        Matrix<RT,1> res(m.rows());
+//        for (size_t i = 0; i < m.rows();++i){
+//            res(i) = std::inner_product(m.row(i).data(),m.row(i).data() + m.cols(),v.begin(),0.0);
+//        }
+//        return res;
+//    }
+//    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
+//    inline Matrix<RT,2> operator*(const Matrix<T1,2> &m1,const Matrix<T2,2> &m2){
+//        size_t m1m = m1.rows();
+//        size_t m2n = m2.cols();
+//        size_t m1n = m1.cols();
+//        size_t m2m = m2.rows();
+//        assert(m1n  == m2m);
+//        Matrix<RT,2> res(m1m,m2n);
+//        //double-double
+//        if constexpr (std::is_same_v<T1,double> && std::is_same_v<T2,double>){
+//           printf("dgemm \n");
+//           cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+//                        m1m,m2n,m1n,1.0,m1.data(),m1n,m2.data(),m2n,0.0,res.data(),m2n);
+//        //TODO implementar uso de cblas con float y complejos
+//        }else{
+//            //NAIVE implementation
+//            printf("naive \n");
+//            for (size_t i = 0; i < m1m; ++i){
+//                for (size_t j = 0; j < m2n; ++j){
+//                    RT tmp(0);
+//                    for (size_t k = 0; k < m1n; ++k){
+//                        tmp+=m1(i,k)*m2(k,j);
+//                    }
+//                    res(i,j) = tmp;
+//                }
+//            }
+//        }
+//        return res;
+//    }
+
+    /**************************************************************************************************/
 //    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
 //    inline Matrix<RT,1> operator *(const Matrix<T1,2> &m2,const Matrix<T2,1> m1){
 //        assert(m2.columns() == m1.size());

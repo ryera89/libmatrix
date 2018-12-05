@@ -14,7 +14,6 @@ CONFIG -= qt
 
 
 QMAKE_CXXFLAGS += -std=c++1z #-fopenmp
-
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
@@ -42,7 +41,7 @@ unix {
     INCLUDEPATH += /usr/include/x86_64-linux-gnu/c++/8/
     LIBS += -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/mkl/lib/intel64/ \
     -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
-    -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/lib/intel64/  \
-    -liomp5 -lpthread -dl -lm
+    -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/compiler/lib/intel64/  \
+    -liomp5 -lpthread -lm #-dl
 }
 
