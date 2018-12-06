@@ -7,6 +7,7 @@
 #include <vector>
 #include "matrix_impl.h"
 #include <cmath>
+#include <complex>
 #include "mkl.h"
 
 enum class Matrix_Type{GEN,SYMM,HER,UTR,LTR,SPRC};
@@ -452,8 +453,6 @@ public:
               return {data(),d};
          }
     };
-
-
     template<typename T>
     class Matrix<T,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::UPP>{
         size_t _dim;
@@ -1123,6 +1122,436 @@ public:
             return _elems[j + 0.5*i*(i + 1)];
         }
 
+    };
+    template<typename C>
+    class Matrix<std::complex<C>,2,Matrix_Type::HER,Matrix_Storage_Scheme::UPP>{
+        size_t _dim;
+        std::vector<std::complex<C>> _elems;
+        mutable std::complex<C> _aux_var;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::HER;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::UPP;
+        using value_type = std::complex<C>;
+        using iterator = typename std::vector<std::complex<C>>::iterator;
+        using const_iterator = typename std::vector<std::complex<C>>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
+        template<typename U>
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.assign(other.begin(),other.end());
+            return *this;
+
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = std::conj(other(j,i));
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = std::conj(other(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(i,j);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) = other(i,j);
+                }
+            }
+            return *this;
+        }
+        Matrix& operator=(const std::vector<C> &val){
+            std::fill(begin(),end(),val);
+            return *this;
+        }
+        size_t extent(size_t n) const{
+            assert(n < 2);
+            return _dim;
+        }
+        size_t rows() const noexcept {return _dim;}
+        size_t cols() const noexcept {return _dim;}
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        std::vector<C>* data() {return _elems.data();}
+        const std::vector<C>* data() const {return _elems.data();}
+
+        //Arithmetic ops
+        template<typename F>
+        Matrix& apply(F fun){
+            std::for_each(begin(),end(),fun);
+            return *this;
+        }
+        //Unary minus
+        Matrix<std::complex<C>,2,type,storage> operator-() const
+        {
+            Matrix<std::complex<C>,2,type,storage> res(*this);
+            std::for_each(res.begin(),res.end(),[](std::complex<C> &elem){elem = -elem;});
+            return res;
+        }
+        //Arithmetic operations.
+        template<typename Scalar>
+        Matrix& operator+=(const Scalar &val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem+=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator-=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem-=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator*=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem*=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator/=(const Scalar& val)
+        {
+            //TODO valorar no permitir division por cero
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem/=val;});
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::plus<std::complex<C>>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::minus<std::complex<C>>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) += std::conj(m(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::LOW> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) -= std::conj(m(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) += m(i,j);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = i; j < cols(); ++j){
+                    this->operator()(i,j) -= m(i,j);
+                }
+            }
+            return *this;
+        }
+        std::complex<C>& operator()(size_t i,size_t j){
+            assert(i < rows() && j < cols() && i <= j);
+            //if (i > j) std::swap(i,j); //upper triangle storage
+            return _elems[j + 0.5*i*(2*_dim - i - 1)];
+        }
+        const std::complex<C>& operator()(size_t i,size_t j) const{
+            assert(i < rows() && j < cols());
+            if (i > j){
+                std::swap(i,j);
+                _aux_var = std::conj(_elems[j + 0.5*i*(2*_dim - i - 1)]);
+                return _aux_var;
+            } //upper triangle storage
+            return _elems[j + 0.5*i*(2*_dim - i - 1)];
+        }
+    };
+
+    template<typename C>
+    class Matrix<std::complex<C>,2,Matrix_Type::HER,Matrix_Storage_Scheme::LOW>{
+        size_t _dim;
+        std::vector<std::complex<C>> _elems;
+        mutable std::complex<C> _aux_var;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::HER;
+        static constexpr Matrix_Storage_Scheme storage =  Matrix_Storage_Scheme::LOW;
+        using value_type = std::complex<C>;
+        using iterator = typename std::vector<std::complex<C>>::iterator;
+        using const_iterator = typename std::vector<std::complex<C>>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        explicit Matrix(size_t dim):_dim(dim),_elems(0.5*dim*(dim+1)){}
+        template<typename U>
+        Matrix(const Matrix<U,2,type,storage> &other):_dim(other.rows()),_elems{other.begin(),other.end()}{
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,storage> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.assign(other.begin(),other.end());
+            return *this;
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = std::conj(other(j,i));
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = std::conj(other(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other):_dim(other.rows()){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+        }
+        template<typename U>
+        Matrix& operator = (const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &other){
+            static_assert (std::is_convertible_v<U,std::complex<C>>,"Matrix Constructor: Incompatible elements type.");
+            _dim = other.rows();
+            _elems.resize(0.5*_dim*(_dim+1));
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) = other(j,i);
+                }
+            }
+            return *this;
+        }
+        Matrix& operator=(const std::complex<C> &val){
+            std::fill(begin(),end(),val);
+            return *this;
+        }
+        size_t extent(size_t n) const{
+            assert(n < 2);
+            return _dim;
+        }
+        size_t rows() const noexcept {return _dim;}
+        size_t cols() const noexcept {return _dim;}
+
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        std::complex<C>* data() {return _elems.data();}
+        const std::complex<C>* data() const {return _elems.data();}
+
+        //Arithmetic ops
+        template<typename F>
+        Matrix& apply(F fun){
+            std::for_each(begin(),end(),fun);
+            return *this;
+        }
+        //Unary minus
+        Matrix<std::complex<C>,2,type,storage> operator-() const
+        {
+            Matrix<std::complex<C>,2,type,storage> res(*this);
+            std::for_each(res.begin(),res.end(),[](std::complex<C> &elem){elem = -elem;});
+            return res;
+        }
+        //Arithmetic operations.
+        template<typename Scalar>
+        Matrix& operator+=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem+=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator-=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem-=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator*=(const Scalar& val)
+        {
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem*=val;});
+            return *this;
+        }
+        template<typename Scalar>
+        Matrix& operator/=(const Scalar& val)
+        {
+            //TODO valorar no permitir division por cero
+            std::for_each(begin(),end(),[&val](std::complex<C> &elem){elem/=val;});
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::plus<std::complex<C>>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,storage> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            std::transform(begin(),end(),m.begin(),begin(),std::minus<std::complex<C>>());
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += std::conj(m(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::UPP> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) -= std::conj(m(j,i));
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator+=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        template<typename U>
+        Matrix& operator-=(const Matrix<U,2,type,Matrix_Storage_Scheme::FULL> &m)
+        {
+            assert(rows() == m.rows()); //symmetric matrizes are squared
+            for (size_t i = 0; i < rows(); ++i){
+                for (size_t j = 0; j <= i; ++j){
+                    this->operator()(i,j) += m(j,i);
+                }
+            }
+            return *this;
+        }
+        std::complex<C>& operator()(size_t i,size_t j){
+            assert(i < rows() && j < cols() && i >= j);
+            //if (i < j) std::swap(i,j); //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
+        const std::complex<C>& operator()(size_t i,size_t j) const{
+            assert(i < rows() && j < cols());
+            if (i < j){
+                std::swap(i,j);
+                _aux_var = std::conj(_elems[j + 0.5*i*(i + 1)]);
+                return _aux_var;
+            } //lower triangle storage
+            return _elems[j + 0.5*i*(i + 1)];
+        }
     };
     template<typename T>
     class Matrix<T,1,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL>{

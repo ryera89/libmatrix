@@ -14,6 +14,8 @@ typedef Matrix<double,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::UPP> SymUpp_Mat
 typedef Matrix<double,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::LOW> SymLow_Matrix;
 typedef Matrix<double,2,Matrix_Type::UTR,Matrix_Storage_Scheme::UPP> UTR_Matrix;
 typedef Matrix<double,2,Matrix_Type::LTR,Matrix_Storage_Scheme::LOW> LTR_Matrix;
+typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::UPP> HUpp_Matrix;
+typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::LOW> HLow_Matrix;
 
 int main(){
 
@@ -50,6 +52,41 @@ int main(){
 
     cout << UTRM << endl;
     cout << LTRM << endl;
+
+    HUpp_Matrix HUM(4);
+    for (size_t i = 0; i < HUM.rows(); ++i){
+        for (size_t j = i; j < HUM.cols(); ++j){
+            HUM(i,j) = std::complex<double>(j,i+j);
+        }
+    }
+
+    HLow_Matrix HLM(4);
+    for (size_t i = 0; i < HUM.rows(); ++i){
+        for (size_t j = 0; j <= i; ++j){
+            HLM(i,j) = std::complex<double>(i+j,j);
+        }
+    }
+
+    cout << HUM << endl;
+    cout <<  HLM << endl;
+
+    cout << (HUM+=HLM) << endl;
+    cout << (HLM+=HUM) << endl;
+
+    cout << (HUM+=HUM) << endl;
+    cout << (HLM+=HLM) << endl;
+
+    HUM+=10;
+    HLM+=5.0;
+
+    cout << HUM << endl;
+    cout <<  HLM << endl;
+
+    HUM*=10;
+    HLM*=5.0;
+
+    cout << HUM << endl;
+    cout <<  HLM << endl;
 
 
 //    M(0,0) = 343;
