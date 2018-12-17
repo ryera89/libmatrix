@@ -1553,8 +1553,7 @@ public:
             return _elems[j + 0.5*i*(i + 1)];
         }
     };
-
-    //Matrix General-Sparse CSR:compress sparse row format
+    //Matrix General-Sparse CSR3:compress sparse row format
     template<typename T>
     class Matrix<T,2,Matrix_Type::GEN,Matrix_Storage_Scheme::CSR3>{
     private:
@@ -1612,6 +1611,91 @@ public:
             assert(elems.size() == _elems.size());
             _elems = elems;
         }
+        void printData(){
+            printf("values: ( ");
+            for (auto &vals : _elems) printf("%f ",vals);
+            printf(") \n");
+            printf("column: ( ");
+            for (auto &vals : _cols) printf("%u ",vals);
+            printf(") \n");
+            printf("rowIndex: ( ");
+            for (auto &vals : _rowIndex) printf("%u ",vals);
+            printf(") \n");
+        }
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
+
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
+
+        int* colsData(){return _cols.data();}
+        const int* colsData() const {return _cols.data();}
+
+        int* rowIndexData(){return _rowIndex.data();}
+        const int* rowIndexData() const{return _rowIndex.data();}
+    };
+    //Matrix Symmetric-Sparse CSR3:compress sparse row format
+    template<typename T>
+    class Matrix<T,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::CSR3>{
+    private:
+        int _current_row = -1;
+        std::vector<int> _cols;
+        std::vector<int> _rowIndex;
+        std::vector<T> _elems;
+    public:
+        //Common aliases
+        static constexpr size_t order = 2;
+        static constexpr Matrix_Type type = Matrix_Type::SYMM;
+        static constexpr Matrix_Storage_Scheme storage = Matrix_Storage_Scheme::CSR3;
+        using value_type = T;
+        using iterator = typename std::vector<T>::iterator;
+        using const_iterator = typename std::vector<T>::const_iterator;
+
+        //Default constructor and destructor
+        Matrix() = default;
+        ~Matrix() = default;
+
+        //Move constructor and assignment
+        Matrix(Matrix&&) = default;
+        Matrix& operator=(Matrix&&) = default;
+
+        //Copy constructor and assignment
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
+
+        //explicit Matrix(size_t non_zero_elems):_cols(non_zero_elems),_elems(non_zero_elems){}
+
+        void setVals(int row,int col,T val){
+            assert(row <= col);
+            if (_current_row == -1){
+                _cols.clear();
+                _rowIndex.clear();
+                _elems.clear();
+            }
+            _cols.push_back(col);
+            _elems.push_back(val);
+            if (row != _current_row){
+                _rowIndex.push_back(_cols.size()-1);
+                _current_row = row; //updating row
+            }
+        }
+        //matrix values and structure settings are finished
+        void setValsFinished(){
+            _rowIndex.push_back(_cols.size());
+            _current_row = -1;
+        }
+        //Sets new vals keeping current matrix structure
+        void setValsKeepingStructure(const std::vector<T> &elems){
+            assert(elems.size() == _elems.size());
+            _elems = elems;
+        }
+        void setValsKeepingStructure(std::vector<T> &&elems){
+            assert(elems.size() == _elems.size());
+            _elems = elems;
+        }
 
         void printData(){
             printf("values: ( ");
@@ -1624,7 +1708,20 @@ public:
             for (auto &vals : _rowIndex) printf("%u ",vals);
             printf(") \n");
         }
+        iterator begin(){return _elems.begin();}
+        const_iterator begin() const{return _elems.cbegin();}
 
+        iterator end(){return _elems.end();}
+        const_iterator end() const{return _elems.cend();}
+
+        T* data() {return _elems.data();}
+        const T* data() const {return _elems.data();}
+
+        int* colsData(){return _cols.data();}
+        const int* colsData() const {return _cols.data();}
+
+        int* rowIndexData(){return _rowIndex.data();}
+        const int* rowIndexData() const{return _rowIndex.data();}
     };
     template<typename T>
     class Matrix<T,1,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL>{
