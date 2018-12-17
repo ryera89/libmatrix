@@ -16,6 +16,7 @@ typedef Matrix<double,2,Matrix_Type::UTR,Matrix_Storage_Scheme::UPP> UTR_Matrix;
 typedef Matrix<double,2,Matrix_Type::LTR,Matrix_Storage_Scheme::LOW> LTR_Matrix;
 typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::UPP> HUpp_Matrix;
 typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::LOW> HLow_Matrix;
+typedef Matrix<double,2,Matrix_Type::GEN,Matrix_Storage_Scheme::CSR3> Sparse_Matrix;
 
 int main(){
 
@@ -87,6 +88,25 @@ int main(){
 
     cout << HUM << endl;
     cout <<  HLM << endl;
+
+    Sparse_Matrix SM;
+
+    SM.setVals(0,0,1);
+    SM.setVals(0,1,-1);
+    SM.setVals(0,3,-3);
+    SM.setVals(1,0,-2);
+    SM.setVals(1,1,5);
+    SM.setVals(2,2,4);
+    SM.setVals(2,3,6);
+    SM.setVals(2,4,4);
+    SM.setVals(3,0,-4);
+    SM.setVals(3,2,2);
+    SM.setVals(3,3,7);
+    SM.setVals(4,1,2);
+    SM.setVals(4,4,-5);
+    SM.setValsFinished();
+
+    SM.printData();
 
 
 //    M(0,0) = 343;
