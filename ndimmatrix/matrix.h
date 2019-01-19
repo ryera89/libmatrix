@@ -1553,7 +1553,7 @@ public:
             return _elems[j + 0.5*i*(i + 1)];
         }
     };
-    //Matrix General-Sparse CSR3:compress sparse row format
+    //Matrix General-Sparse CSR3:compress sparse row format 3 array variant
     template<typename T>
     class Matrix<T,2,Matrix_Type::GEN,Matrix_Storage_Scheme::CSR3>{
     private:
@@ -2043,6 +2043,20 @@ public:
 //        }
 //        return res;
 //    }
+    typedef Matrix<double,2,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL> MatDoub;
+
+    inline MatDoub operator*(const MatDoub &m1,const MatDoub &m2){
+        size_t m1_rows = m1.rows();
+        size_t m1_cols = m1.cols();
+        size_t m2_rows = m2.rows();
+        size_t m2_cols = m2.cols();
+        assert(m1_cols == m2_rows);
+        MatDoub res(m1_rows,m2_cols);
+        cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                    int(m1_rows),int(m2_cols),int(m1_cols),1.0,m1.data(),
+                    int(m1_cols),m2.data(),int(m2_cols),0.0,res.data(),int(m2_cols));
+        return res;
+    }
 //    template<typename T1,typename T2,typename RT = std::common_type_t<T1,T2>>
 //    inline Matrix<RT,2> operator*(const Matrix<T1,2> &m1,const Matrix<T2,2> &m2){
 //        size_t m1m = m1.rows();
