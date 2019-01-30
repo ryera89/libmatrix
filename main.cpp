@@ -20,7 +20,45 @@ int main(){
                            {3,6,8,9},
                            {4,7,9,10}};
 
+    Matrix<double,2> M2 = {{10,0,0,0},
+                           {0,10,0,0},
+                           {0,0,10,0},
+                           {0,0,0,10}};
 
+    Matrix<double,2> M3 = M1 + M2 + M1;
+
+    cout << setprecision(3) << M3 << endl;
+
+    int val(3);
+
+    M3*=val;
+
+    cout << setprecision(3) << M3 << endl;
+
+    Matrix<double,2> M4 = M1*M2;
+
+    Matrix<complexd,2> CM(4,4,complexd(1,2));
+
+    Matrix<complexd,2> CM1 = CM+M1;
+    Matrix<complexd,2> CM2 = CM-M1;
+    Matrix<complexd,2> CM3 = M1+CM;
+    Matrix<complexd,2> CM4 = M1-CM;
+
+    cout << setprecision(3) << CM1 << endl;
+    cout << setprecision(3) << CM2 << endl;
+    cout << setprecision(3) << CM3 << endl;
+    cout << setprecision(3) << CM4 << endl;
+
+    cout << 1.0-complexd(1,2) << endl;
+
+    Matrix<int,2> MI1 = {{1,2,3,4},
+                            {2,5,6,7},
+                            {3,6,8,9},
+                            {4,7,9,10}};
+
+    cout << (M1+=MI1) << endl;
+
+    cout << setprecision(3) << M4 << endl;
 
     Matrix<double,2,MATRIX_TYPE::SYMM> SM1(M1);
 

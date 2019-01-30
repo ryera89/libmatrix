@@ -7,6 +7,7 @@
 #include "matrix_ref.h"
 #include <iostream>
 #include <iomanip>
+#include "mkl.h"
 
 enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
 
@@ -99,6 +100,7 @@ public:
         return m_desc.m_extents[n];
     }
 
+    std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     auto begin(){return std::begin(m_elems);}
@@ -189,18 +191,36 @@ public:
         m_elems/=val;
         return *this;
     }
-    template<typename U>
-    Matrix& operator+=(const Matrix<U,N> &m)
+    Matrix& operator+=(const Matrix<T,N> &m)
     {
-        assert(std::equal(this->begin(),this->end(),m.begin(),m.end()));
+        assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
+                          m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
         m_elems+=m.valarray();
         return *this;
     }
-    template<typename U>
-    Matrix& operator-=(const Matrix<U,N> &m)
+    Matrix& operator-=(const Matrix<T,N> &m)
     {
-        assert(std::equal(this->begin(),this->end(),m.begin(),m.end()));
+        assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
+                          m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
         m_elems-=m.valarray();
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator+=(const Matrix<U,N> &m)
+    {
+        assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
+                          m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1+val2;});
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator-=(const Matrix<U,N> &m)
+    {
+        assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
+                          m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1-val2;});
         return *this;
     }
 };
@@ -266,6 +286,9 @@ public:
 
     Matrix& operator =(T val){m_elems = val; return *this;}
 
+    const Matrix_Slice<2>& descriptor() const noexcept{
+        return m_desc;
+    }
     size_t size() const noexcept {return m_desc.m_size;}
 
     size_t extent(size_t n) const{
@@ -281,6 +304,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -368,16 +392,32 @@ public:
         m_elems/=val;
         return *this;
     }
-    template<typename U>
-    Matrix& operator+=(const Matrix<U,2> &m){
+    Matrix& operator+=(const Matrix<T,2> &m)
+    {
         assert(rows() == m.rows() && cols() == m.cols());
         m_elems+=m.valarray();
         return *this;
     }
-    template<typename U>
-    Matrix& operator-=(const Matrix<U,2> &m){
+    Matrix& operator-=(const Matrix<T,2> &m)
+    {
         assert(rows() == m.rows() && cols() == m.cols());
         m_elems-=m.valarray();
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator+=(const Matrix<U,2> &m)
+    {
+        assert(rows() == m.rows() && cols() == m.cols());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1+val2;});
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator-=(const Matrix<U,2> &m)
+    {
+        assert(rows() == m.rows() && cols() == m.cols());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1-val2;});
         return *this;
     }
 };
@@ -428,6 +468,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -476,18 +517,32 @@ public:
         m_elems/=val;
         return *this;
     }
-    template<typename U>
-    Matrix& operator+=(const Matrix<U,2,matrix_type> &m)
+    Matrix& operator+=(const Matrix<T,2,matrix_type> &m)
     {
-        assert(rows() == m.rows()); //symmetric matrizes are squared
+        assert(rows() == m.rows() && cols() == m.cols());
         m_elems+=m.valarray();
         return *this;
     }
-    template<typename U>
-    Matrix& operator-=(const Matrix<U,2,matrix_type> &m)
+    Matrix& operator-=(const Matrix<T,2,matrix_type> &m)
     {
-        assert(rows() == m.rows()); //symmetric matrizes are squared
+        assert(rows() == m.rows() && cols() == m.cols());
         m_elems-=m.valarray();
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator+=(const Matrix<U,2,matrix_type> &m)
+    {
+        assert(rows() == m.rows() && cols() == m.cols());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1+val2;});
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator-=(const Matrix<U,2,matrix_type> &m)
+    {
+        assert(rows() == m.rows() && cols() == m.cols());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1-val2;});
         return *this;
     }
     template<typename U>
@@ -561,6 +616,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -848,6 +904,7 @@ public:
 
     size_t size() const noexcept{return m_elems.size();}
 
+    std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     const Matrix_Slice<1>& descriptor() const noexcept{
@@ -958,6 +1015,7 @@ public:
     }
 };
 
+//************ostream operations*********************************************************************
 template<typename T,MATRIX_TYPE mtype,typename = typename std::enable_if_t<mtype != MATRIX_TYPE::CSR
                                                                            && mtype != MATRIX_TYPE::CSR3>>
 inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2,mtype> &m){
@@ -987,4 +1045,174 @@ inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1,mtype> &m){
 }
 /*********************************************************************************/
 
+/***************************arithmetic ops*****************************************/
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Scalar &val,const Matrix<T,N> &m){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(const Scalar &val,const Matrix<T,N> &m){
+    Matrix<T,N> R(m);
+    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+    return R;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+    return R;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R-=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R-=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Scalar &val,const Matrix<T,N> &m){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator /(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R/=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator /(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R/=val;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator+(const Matrix<T,N> &m1,const Matrix<T,N> &m2){
+    Matrix<T,N> R(m1);
+    return R+=m2;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator+(Matrix<T,N> &&m1,const Matrix<T,N> &m2){
+    Matrix<T,N> R(m1);
+    return R+=m2;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator+(const Matrix<T,N> &m1,Matrix<T,N> &&m2){
+    Matrix<T,N> R(m2);
+    return R+=m1;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator-(const Matrix<T,N> &m1,const Matrix<T,N> &m2){
+    Matrix<T,N> R(m1);
+    return R-=m2;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator-(Matrix<T,N> &&m1,const Matrix<T,N> &m2){
+    Matrix<T,N> R(m1);
+    return R-=m2;
+}
+template<typename T,size_t N>
+inline Matrix<T,N> operator-(const Matrix<T,N> &m1,Matrix<T,N> &&m2){
+    assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+    Matrix<T,N> R(m2);
+    std::transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
+    return R;
+}
+/*****************************specializations*********************************/
+typedef std::complex<double> complexd;
+
+template<size_t N>
+inline Matrix<complexd,N> operator+(const Matrix<complexd,N> &cm,const Matrix<double,N> &m){
+    Matrix<complexd,N> r(cm);
+    return r+=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator+(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
+    Matrix<complexd,N> r(cm);
+    return r+=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator+(const Matrix<double,N> &m,const Matrix<complexd,N> &cm){
+    Matrix<complexd,N> r(cm);
+    return r+=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator+(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
+    Matrix<complexd,N> r(cm);
+    return r+=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator-(const Matrix<complexd,N> &cm,const Matrix<double,N> &m){
+    Matrix<complexd,N> r(cm);
+    return r-=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator-(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
+    Matrix<complexd,N> r(cm);
+    return r-=m;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,const Matrix<complexd,N> &cm){
+    assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
+                      cm.descriptor().m_extents.begin(),cm.descriptor().m_extents.end()));
+    Matrix<complexd,N> r(cm);
+    std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
+    return r;
+}
+template<size_t N>
+inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
+    assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
+                      cm.descriptor().m_extents.begin(),cm.descriptor().m_extents.end()));
+    Matrix<complexd,N> r(cm);
+    std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
+    return r;
+}
+/*****************************************************************************/
+/*****************************Matrix Multiplication********************************/
+inline Matrix<double,2> operator*(const Matrix<double,2> &m1,const Matrix<double,2> &m2){
+    size_t m1_rows = m1.rows();
+    size_t m1_cols = m1.cols();
+    size_t m2_rows = m2.rows();
+    size_t m2_cols = m2.cols();
+    assert(m1_cols == m2_rows);
+    Matrix<double,2> res(m1_rows,m2_cols);
+    cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                int(m1_rows),int(m2_cols),int(m1_cols),1.0,m1.begin(),
+                int(m1_cols),m2.begin(),int(m2_cols),0.0,res.begin(),int(m2_cols));
+    return res;
+}
+/**********************************************************************************/
 #endif // MATRIX_H
