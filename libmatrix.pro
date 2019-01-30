@@ -31,7 +31,9 @@ SOURCES += \
 
 HEADERS += \
     ndimmatrix/matrix.h \
-    ndimmatrix/matrix_impl.h
+    ndimmatrix/matrix_impl.h \
+    ndimmatrix/matrix_ref.h \
+    ndimmatrix/matrix_slice.h
 
 unix {
     target.path = /usr/lib

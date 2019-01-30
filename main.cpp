@@ -4,109 +4,60 @@
 #include <chrono>
 
 using namespace std;
-using namespace matrix_impl;
 
 constexpr int increment(int x){return ++x;}
 
-typedef Matrix<double,2,Matrix_Type::GEN,Matrix_Storage_Scheme::FULL> Gen_Matrix;
-typedef Matrix<double,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::FULL> SymFull_Matrix;
-typedef Matrix<double,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::UPP> SymUpp_Matrix;
-typedef Matrix<double,2,Matrix_Type::SYMM,Matrix_Storage_Scheme::LOW> SymLow_Matrix;
-typedef Matrix<double,2,Matrix_Type::UTR,Matrix_Storage_Scheme::UPP> UTR_Matrix;
-typedef Matrix<double,2,Matrix_Type::LTR,Matrix_Storage_Scheme::LOW> LTR_Matrix;
-typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::UPP> HUpp_Matrix;
-typedef Matrix<std::complex<double>,2,Matrix_Type::HER,Matrix_Storage_Scheme::LOW> HLow_Matrix;
-typedef Matrix<double,2,Matrix_Type::GEN,Matrix_Storage_Scheme::CSR3> Sparse_Matrix;
 
 int main(){
 
-    Gen_Matrix M = {{1,2,3,4},
-                       {5,6,7,8},
-                       {9,10,11,12}};
+//    Matrix<double,2> M1 = {{1,2,3,4},
+//                          {5,6,7,8},
+//                          {9,10,11,12}};
 
 
-    SymFull_Matrix SMF = {{1,2,3,4},
-                          {2,5,6,7},
-                          {3,6,8,9},
-                          {4,7,9,10}};
+    Matrix<double,2> M1 = {{1,2,3,4},
+                           {2,5,6,7},
+                           {3,6,8,9},
+                           {4,7,9,10}};
 
 
 
-    SymLow_Matrix SML(SMF);
+    Matrix<double,2,MATRIX_TYPE::SYMM> SM1(M1);
 
-    SymUpp_Matrix SMU(SML);
+    cout << setprecision(3) << M1 << endl;
 
-    cout << M << endl;
+    cout << setprecision(3) << SM1 << endl;
 
-    cout << SMF << endl;
+    cout << setprecision(3) << (SM1+=M1) << endl;
+    cout << setprecision(3) << (SM1+=SM1) << endl;
 
-    cout << (SMU+=SMF) << endl;
-    cout << SML << endl;
+    cout << setprecision(3) << SM1 << endl;
 
-    UTR_Matrix UTRM(3);
-    UTRM = 10.0;
 
-    LTR_Matrix LTRM(3);
-    LTRM = -10.0;
-
-    UTRM(2,2) = 5;
-
-    cout << UTRM << endl;
-    cout << LTRM << endl;
-
-    HUpp_Matrix HUM(4);
-    for (size_t i = 0; i < HUM.rows(); ++i){
-        for (size_t j = i; j < HUM.cols(); ++j){
-            HUM(i,j) = std::complex<double>(j,i+j);
+    Matrix<std::complex<double>,2,MATRIX_TYPE::HER> HM1(4);
+    for (size_t i = 0; i < HM1.rows(); ++i){
+        for (size_t j = i; j < HM1.cols(); ++j){
+            HM1(i,j) = std::complex<double>(j,i+j);
         }
     }
+    cout << setprecision(3) << HM1 << endl;
+    cout << (HM1+=HM1) << endl;
+    cout << (HM1+=SM1) << endl;
 
-    HLow_Matrix HLM(4);
-    for (size_t i = 0; i < HUM.rows(); ++i){
-        for (size_t j = 0; j <= i; ++j){
-            HLM(i,j) = std::complex<double>(i+j,j);
-        }
-    }
+    HM1 += 10;
 
-    cout << HUM << endl;
-    cout <<  HLM << endl;
+    cout << setprecision(3) << HM1 << endl;
 
-    cout << (HUM+=HLM) << endl;
-    cout << (HLM+=HUM) << endl;
 
-    cout << (HUM+=HUM) << endl;
-    cout << (HLM+=HLM) << endl;
+    HM1*=10;
 
-    HUM+=10;
-    HLM+=5.0;
+    cout << setprecision(3) << HM1 << endl;
 
-    cout << HUM << endl;
-    cout <<  HLM << endl;
+    //Sparse_Matrix SM;
 
-    HUM*=10;
-    HLM*=5.0;
+    //SM.setValsFinished();
 
-    cout << HUM << endl;
-    cout <<  HLM << endl;
-
-    Sparse_Matrix SM;
-
-    SM.setVals(0,0,1);
-    SM.setVals(0,1,-1);
-    SM.setVals(0,3,-3);
-    SM.setVals(1,0,-2);
-    SM.setVals(1,1,5);
-    SM.setVals(2,2,4);
-    SM.setVals(2,3,6);
-    SM.setVals(2,4,4);
-    SM.setVals(3,0,-4);
-    SM.setVals(3,2,2);
-    SM.setVals(3,3,7);
-    SM.setVals(4,1,2);
-    SM.setVals(4,4,-5);
-    SM.setValsFinished();
-
-    SM.printData();
+    //SM.printData();
 
 
 //    M(0,0) = 343;
