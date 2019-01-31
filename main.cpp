@@ -20,10 +20,10 @@ int main(){
                            {3,6,8,9},
                            {4,7,9,10}};
 
-    Matrix<double,2> M2 = {{10,0,0,0},
-                           {0,10,0,0},
-                           {0,0,10,0},
-                           {0,0,0,10}};
+    Matrix<double,2> M2 = {{0,0,0,0},
+                           {0,0,0,0},
+                           {0,0,0,0},
+                           {0,0,0,0}};
 
     Matrix<double,2> M3 = M1 + M2 + M1;
 
@@ -62,6 +62,13 @@ int main(){
 
     Matrix<double,2,MATRIX_TYPE::SYMM> SM1(M1);
 
+    cout << SM1 << endl;
+    valarray<uint32_t> indx1 = {0,1,2};
+    Matrix<double,2> indM1 = SM1(indx1,indx1);
+    if (indM1.matrix_type == MATRIX_TYPE::GEN) cout << "GEN" << endl;
+
+    cout << indM1 << endl;
+
     cout << setprecision(3) << M1 << endl;
 
     cout << setprecision(3) << SM1 << endl;
@@ -91,10 +98,32 @@ int main(){
 
     cout << setprecision(3) << HM1 << endl;
 
-    //Sparse_Matrix SM;
+    Matrix<double,2,MATRIX_TYPE::CSR> SpM1(M2);
 
-    //SM.setValsFinished();
+    cout << M2 << endl;
 
+    cout << SpM1 << endl;
+    SpM1.printData();
+
+    Matrix<double,2,MATRIX_TYPE::CSR3> SpM2(M2);
+
+    cout << SpM2 << endl;
+    SpM2.printData();
+
+    vector<uint32_t> iindx = {1,2,3};
+    vector<uint32_t> jindx = {0,1,2,3};
+
+    Matrix<double,2,MATRIX_TYPE::CSR> SpM11 = SpM1(iindx,jindx);
+
+    Matrix<double,2,MATRIX_TYPE::CSR3> SpM22 = SpM2(iindx,jindx);
+
+    cout << "new data here" << endl;
+
+    SpM11.printData();
+    SpM22.printData();
+
+    cout << SpM11 << endl;
+    cout << SpM22 << endl;
     //SM.printData();
 
 

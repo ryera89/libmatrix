@@ -2,6 +2,7 @@
 #define MATRIX_H
 
 #include <valarray>
+#include <vector>
 #include <complex>
 #include <type_traits>
 #include "matrix_ref.h"
@@ -100,7 +101,7 @@ public:
         return m_desc.m_extents[n];
     }
 
-    std::valarray<T>& valarray() {return m_elems;}
+    //std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     auto begin(){return std::begin(m_elems);}
@@ -304,7 +305,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    std::valarray<T>& valarray() {return m_elems;}
+    //std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -365,6 +366,30 @@ public:
     const T& operator()(size_t i,size_t j) const{
         assert(i < rows() && j < cols());
         return m_elems[i*cols() + j];
+    }
+    Matrix<T,2> operator()(const std::valarray<uint32_t> &indx1,const std::valarray<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
+    }
+    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
     }
     //unary minus
     Matrix operator-() const{
@@ -468,7 +493,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    std::valarray<T>& valarray() {return m_elems;}
+    //std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -484,6 +509,30 @@ public:
         assert(i < rows() && j < cols());
         if (i > j) std::swap(i,j); //upper triangle storage
         return m_elems[j + 0.5*i*(2*m_dim - i - 1)];
+    }
+    Matrix<T,2> operator()(const std::valarray<uint32_t> &indx1,const std::valarray<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
+    }
+    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
     }
     Matrix operator-() const
     {
@@ -616,7 +665,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    std::valarray<T>& valarray() {return m_elems;}
+    //std::valarray<T>& valarray() {return m_elems;}
     const std::valarray<T>& valarray() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -636,6 +685,30 @@ public:
             return m_aux;
         } //upper triangle storage
         return m_elems[j + 0.5*i*(2*m_dim - i - 1)];
+    }
+    Matrix<T,2> operator()(const std::valarray<uint32_t> &indx1,const std::valarray<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
+    }
+    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+        size_t nrow = indx1.size();
+        size_t ncol = indx2.size();
+
+        Matrix<T,2> res(nrow,ncol);
+        for (size_t i = 0; i < nrow; ++i){
+            for (size_t j = 0; j < ncol; ++j){
+                res(i,j) = this->operator()(indx1[i],indx2[j]);
+            }
+        }
+        return res;
     }
     Matrix operator-() const
     {
@@ -725,11 +798,11 @@ class Matrix<T,2,MATRIX_TYPE::CSR>{
 private:
     size_t m_row;
     size_t m_col;
-    std::valarray<uint32_t> m_pointerE;
-    std::valarray<uint32_t> m_pointerB;
-    std::valarray<uint32_t> m_columns;
-    std::valarray<T> m_elems;
-
+    std::vector<uint32_t> m_pointerE;
+    std::vector<uint32_t> m_pointerB;
+    std::vector<uint32_t> m_columns;
+    std::vector<T> m_elems;
+    static constexpr T zero_val = T();
 public:
     static constexpr size_t order = 2;
     static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR;
@@ -745,17 +818,146 @@ public:
     Matrix& operator=(const Matrix&) = default;
 
 
-    Matrix(size_t row,size_t col,const std::valarray<uint32_t> &pointerE,const std::valarray<uint32_t> &pointerB,
-           const std::valarray<uint32_t> &columns,const std::valarray<T> &vals):m_row(row),m_col(col),m_pointerE(pointerE),
+    Matrix(size_t row,size_t col,const std::vector<uint32_t> &pointerE,const std::vector<uint32_t> &pointerB,
+           const std::vector<uint32_t> &columns,const std::vector<T> &vals):m_row(row),m_col(col),m_pointerE(pointerE),
                                                                              m_pointerB(pointerB),m_columns(columns),m_elems(vals){
-        assert(m_columns.size() == m_elems.size() && m_row == (m_pointerB.size()-1) && m_row == (m_pointerE.size()-1));
+        assert(m_columns.size() == m_elems.size() && m_row == m_pointerB.size() && m_row == m_pointerE.size());
     }
 
-    Matrix(size_t row,size_t col,std::valarray<uint32_t> &&pointerE,std::valarray<uint32_t> &&pointerB,
-           std::valarray<uint32_t> &&columns,std::valarray<T> &&vals):m_row(row),m_col(col),m_pointerE(pointerE),
+    Matrix(size_t row,size_t col,std::vector<uint32_t> &&pointerE,std::vector<uint32_t> &&pointerB,
+           std::vector<uint32_t> &&columns,std::vector<T> &&vals):m_row(row),m_col(col),m_pointerE(pointerE),
                                                                                    m_pointerB(pointerB),m_columns(columns),m_elems(vals){
-        assert(m_columns.size() == m_elems.size() && m_row == (m_pointerB.size()-1) && m_row == (m_pointerE.size()-1));
+        assert(m_columns.size() == m_elems.size() && m_row == m_pointerB.size() && m_row == m_pointerE.size());
     }
+    Matrix(const Matrix<T,2> &m):m_row(m.rows()),m_col(m.cols()),m_pointerE(m_row),m_pointerB(m_row){
+        for (size_t i = 0; i < m_row; ++i){
+            size_t iitmp = m_row;
+            for (size_t j = 0; j < m_col; ++j){
+                T val = m(i,j);
+                if (val != T()){ //si el valor es distinto de cero
+                    m_elems.push_back(val);
+                    m_columns.push_back(j);
+                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        m_pointerB[i] = m_elems.size()-1;
+                        iitmp = i;
+                    }
+                }
+            }
+            if (iitmp != i){ //una fila llena de zeros
+                if (m_elems.size() == 0) {m_pointerB[i] = 0; m_pointerE[i] = 0;} /*primeras filas == 0*/
+                else {m_pointerB[i] = m_elems.size(); m_pointerE[i] = m_elems.size();}
+            }else{ m_pointerE[i] = m_elems.size();}
+
+        }
+    }
+    Matrix& operator=(const Matrix<T,2> &m){
+        m_row = m.rows();
+        m_col = m.cols();
+        m_pointerE.resize(m_row);
+        m_pointerB.resize(m_row);
+        m_columns.clear();
+        m_elems.clear();
+        for (size_t i = 0; i < m_row; ++i){
+            size_t iitmp = m_row;
+            for (size_t j = 0; j < m_col; ++j){
+                T val = m(i,j);
+                if (val != T()){ //si el valor es distinto de cero
+                    m_elems.push_back(val);
+                    m_columns.push_back(j);
+                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        m_pointerB[i] = m_elems.size()-1;
+                        iitmp = i;
+                    }
+                }
+            }
+            if (iitmp != i){ //una fila llena de zeros
+                if (m_elems.size() == 0) {m_pointerB[i] = 0; m_pointerE[i] = 0;} /*primeras filas == 0*/
+                else {m_pointerB[i] = m_elems.size(); m_pointerE[i] = m_elems.size();}
+            }else{ m_pointerE[i] = m_elems.size();}
+
+        }
+    }
+    const T& operator()(uint32_t i,uint32_t j) const{
+        assert(i < m_row && j < m_col);
+        uint32_t beg = m_pointerB[i];
+        uint32_t end = m_pointerE[i];
+
+        if (beg == end) return zero_val;
+        if (j < m_columns[beg]) return zero_val;
+        if (j > m_columns[end-1]) return zero_val;
+
+        for (;beg<end;++beg){
+            if (m_columns[beg] == j) return m_elems[beg];
+        }
+        return zero_val;
+    }
+    Matrix operator()(const std::valarray<uint32_t> &iindex,const std::valarray<uint32_t> &jindex) const{
+        size_t nrow = iindex.size();
+        size_t ncol = jindex.size();
+
+        std::vector<T> elems;
+        std::vector<uint32_t> columns;
+        std::vector<uint32_t> pointerB(nrow);
+        std::vector<uint32_t> pointerE(nrow);
+
+        for (uint32_t i = 0; i < nrow; ++i){
+            uint32_t itmp = nrow;
+            uint32_t ii = iindex[i];
+            for (uint32_t j = 0; j < ncol; ++j){
+                uint32_t jj = jindex[j];
+                T val = this->operator()(ii,jj);
+                if (val != T()){ //si el valor es distinto de cero
+                    elems.push_back(val);
+                    columns.push_back(j);
+                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        pointerB[i] = elems.size()-1;
+                        itmp = i;
+                    }
+                }
+            }
+            if (itmp != i){ //una fila llena de zeros
+                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
+                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
+            }else{ pointerE[i] = elems.size();}
+        }
+
+        return Matrix(nrow,ncol,pointerE,pointerB,columns,elems);
+    }
+    Matrix operator()(const std::vector<uint32_t> &iindex,const std::vector<uint32_t> &jindex) const{
+        size_t nrow = iindex.size();
+        size_t ncol = jindex.size();
+
+        std::vector<T> elems;
+        std::vector<uint32_t> columns;
+        std::vector<uint32_t> pointerB(nrow);
+        std::vector<uint32_t> pointerE(nrow);
+
+        for (uint32_t i = 0; i < nrow; ++i){
+            uint32_t itmp = nrow;
+            uint32_t ii = iindex[i];
+            for (uint32_t j = 0; j < ncol; ++j){
+                uint32_t jj = jindex[j];
+                T val = this->operator()(ii,jj);
+                if (val != T()){ //si el valor es distinto de cero
+                    elems.push_back(val);
+                    columns.push_back(j);
+                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        pointerB[i] = elems.size()-1;
+                        itmp = i;
+                    }
+                }
+            }
+            if (itmp != i){ //una fila llena de zeros
+                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
+                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
+            }else{ pointerE[i] = elems.size();}
+        }
+
+        return Matrix(nrow,ncol,pointerE,pointerB,columns,elems);
+    }
+
+    size_t rows() const{return m_row;}
+    size_t cols() const{return m_col;}
 
     void printData(){
         printf("values: ( ");
@@ -791,10 +993,10 @@ class Matrix<T,2,MATRIX_TYPE::CSR3>{
 private:
     size_t m_row;
     size_t m_col;
-    std::valarray<uint32_t> m_rowIndex;
-    std::valarray<uint32_t> m_columns;
-    std::valarray<T> m_elems;
-
+    std::vector<uint32_t> m_rowIndex;
+    std::vector<uint32_t> m_columns;
+    std::vector<T> m_elems;
+    static constexpr T zero_val = T();
 public:
     static constexpr size_t order = 2;
     static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR3;
@@ -810,15 +1012,142 @@ public:
     Matrix& operator=(const Matrix&) = default;
 
 
-    Matrix(size_t row,size_t col,const std::valarray<uint32_t> &rowIndex,const std::valarray<uint32_t> &columns,const std::valarray<T> &vals):
+    Matrix(size_t row,size_t col,const std::vector<uint32_t> &rowIndex,const std::vector<uint32_t> &columns,const std::vector<T> &vals):
                                                                      m_row(row),m_col(col),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
         assert(m_columns.size() == m_elems.size() && m_row == (m_rowIndex.size()-1));
 
     }
-    Matrix(size_t row,size_t col,std::valarray<uint32_t> &&rowIndex,std::valarray<uint32_t> &&columns,std::valarray<T> &&vals):
+    Matrix(size_t row,size_t col,std::vector<uint32_t> &&rowIndex,std::vector<uint32_t> &&columns,std::vector<T> &&vals):
                                                                      m_row(row),m_col(col),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
         assert(m_columns.size() == m_elems.size() && m_row == (m_rowIndex.size()-1));
     }
+    Matrix(const Matrix<T,2> &m):m_row(m.rows()),m_col(m.cols()),m_rowIndex(m_row+1){
+        for (size_t i = 0; i < m_row; ++i){
+            size_t iitmp = m_row;
+            for (size_t j = 0; j < m_col; ++j){
+                T val = m(i,j);
+                if (val != T()){ //si el valor es distinto de cero
+                    m_elems.push_back(val);
+                    m_columns.push_back(j);
+                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        m_rowIndex[i] = m_elems.size()-1;
+                        iitmp = i;
+                    }
+                }
+            }
+            if (iitmp != i){ //una fila llena de zeros
+                if (m_elems.size() == 0) {m_rowIndex[i] = 0;} /*primeras filas == 0*/
+                else {m_rowIndex[i] = m_elems.size();}
+            }
+        }
+        m_rowIndex[m_row] = m_elems.size();
+    }
+    Matrix& operator=(const Matrix<T,2> &m){
+        m_row = m.rows();
+        m_col = m.cols();
+        m_rowIndex.resize(m_row+1);
+        m_columns.clear();
+        m_elems.clear();
+        for (size_t i = 0; i < m_row; ++i){
+            size_t iitmp = m_row;
+            for (size_t j = 0; j < m_col; ++j){
+                T val = m(i,j);
+                if (val != T()){ //si el valor es distinto de cero
+                    m_elems.push_back(val);
+                    m_columns.push_back(j);
+                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        m_rowIndex[i] = m_elems.size()-1;
+                        iitmp = i;
+                    }
+                }
+            }
+            if (iitmp != i){ //una fila llena de zeros
+                if (m_elems.size() == 0) {m_rowIndex[i] = 0;} /*primeras filas == 0*/
+                else {m_rowIndex[i] = m_elems.size();}
+            }
+        }
+        m_rowIndex[m_row] = m_elems.size();
+    }
+
+    const T& operator()(uint32_t i,uint32_t j) const{
+        assert(i < m_row && j < m_col);
+        uint32_t beg = m_rowIndex[i];
+        uint32_t end = m_rowIndex[i+1];
+
+        if (beg == end) return zero_val;
+        if (j < m_columns[beg]) return zero_val;
+        if (j > m_columns[end-1]) return zero_val;
+
+        for (;beg<end;++beg){
+            if (m_columns[beg] == j) return m_elems[beg];
+        }
+        return zero_val;
+    }
+    Matrix operator()(const std::valarray<uint32_t> &iindex,const std::valarray<uint32_t> &jindex) const{
+        size_t nrow = iindex.size();
+        size_t ncol = jindex.size();
+
+        std::vector<T> elems;
+        std::vector<uint32_t> columns;
+        std::vector<uint32_t> rowIndex(nrow+1);
+
+        for (uint32_t i = 0; i < nrow; ++i){
+            uint32_t itmp = nrow;
+            uint32_t ii = iindex[i];
+            for (uint32_t j = 0; j < ncol; ++j){
+                uint32_t jj = jindex[j];
+                T val = this->operator()(ii,jj);
+                if (val != T()){ //si el valor es distinto de cero
+                    elems.push_back(val);
+                    columns.push_back(j);
+                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        rowIndex[i] = elems.size()-1;
+                        itmp = i;
+                    }
+                }
+            }
+            if (itmp != i){ //una fila llena de zeros
+                if (elems.size() == 0) {rowIndex[i] = 0;} /*primeras filas == 0*/
+                else {rowIndex[i] = elems.size();}
+            }
+        }
+        rowIndex[nrow] = elems.size();
+
+        return Matrix(nrow,ncol,rowIndex,columns,elems);
+    }
+    Matrix operator()(const std::vector<uint32_t> &iindex,const std::vector<uint32_t> &jindex) const{
+        size_t nrow = iindex.size();
+        size_t ncol = jindex.size();
+
+        std::vector<T> elems;
+        std::vector<uint32_t> columns;
+        std::vector<uint32_t> rowIndex(nrow+1);
+
+        for (uint32_t i = 0; i < nrow; ++i){
+            uint32_t itmp = nrow;
+            uint32_t ii = iindex[i];
+            for (uint32_t j = 0; j < ncol; ++j){
+                uint32_t jj = jindex[j];
+                T val = this->operator()(ii,jj);
+                if (val != T()){ //si el valor es distinto de cero
+                    elems.push_back(val);
+                    columns.push_back(j);
+                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                        rowIndex[i] = elems.size()-1;
+                        itmp = i;
+                    }
+                }
+            }
+            if (itmp != i){ //una fila llena de zeros
+                if (elems.size() == 0) {rowIndex[i] = 0;} /*primeras filas == 0*/
+                else {rowIndex[i] = elems.size();}
+            }
+        }
+        rowIndex[nrow] = elems.size();
+
+        return Matrix(nrow,ncol,rowIndex,columns,elems);
+    }
+
     void printData(){
         printf("values: ( ");
         for (auto &vals : m_elems) printf("%f ",vals);
@@ -830,6 +1159,10 @@ public:
         for (auto &vals : m_rowIndex) printf("%u ",vals);
         printf(") \n");
     }
+
+    size_t rows() const{return m_row;}
+    size_t cols() const{return m_col;}
+
     auto begin(){return std::begin(m_elems);}
     auto begin() const{return std::cbegin(m_elems);}
 
@@ -1016,8 +1349,7 @@ public:
 };
 
 //************ostream operations*********************************************************************
-template<typename T,MATRIX_TYPE mtype,typename = typename std::enable_if_t<mtype != MATRIX_TYPE::CSR
-                                                                           && mtype != MATRIX_TYPE::CSR3>>
+template<typename T,MATRIX_TYPE mtype>
 inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2,mtype> &m){
     std::ios_base::fmtflags ff = std::ios::scientific;
     ff |= std::ios::showpos;
@@ -1031,9 +1363,8 @@ inline  std::ostream &operator << (std::ostream &os,const Matrix<T,2,mtype> &m){
     os.unsetf(ff);
     return os;
 }
-template<typename T,MATRIX_TYPE mtype,typename = typename std::enable_if_t<mtype != MATRIX_TYPE::CSR
-                                                                           && mtype != MATRIX_TYPE::CSR3>>
-inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1,mtype> &m){
+template<typename T>
+inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
     std::ios_base::fmtflags ff = std::ios::scientific;
     ff |= std::ios::showpos;
     os.setf(ff);
