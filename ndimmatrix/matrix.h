@@ -979,14 +979,17 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    auto columnssData(){return std::begin(m_columns);}
-    auto columnssData() const {return std::cbegin(m_columns);}
+    auto columnssData(){return m_columns.data();}
+    auto columnssData() const {return m_columns.data();}
 
-    auto pointerBData(){return std::begin(m_pointerB);}
-    auto pointerBData() const{return std::cbegin(m_pointerB);}
+    auto pointerBData(){return m_pointerB.data();}
+    auto pointerBData() const{return m_pointerB.data();}
 
-    auto pointerEData(){return std::begin(m_pointerE);}
-    auto pointerEData() const{return std::cbegin(m_pointerE);}
+    auto pointerEData(){return m_pointerE.data();}
+    auto pointerEData() const{return m_pointerE.data();}
+
+    auto valuesData(){return m_elems.data();}
+    auto valuesData() const{return m_elems.data();}
 };
 template<typename T>
 class Matrix<T,2,MATRIX_TYPE::CSR3>{
@@ -1531,7 +1534,33 @@ inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,Matrix<complexd,N>
     std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
     return r;
 }
+
 /*****************************************************************************/
+/******************************sparse matrix operations************************/
+
+inline Matrix<double,2,MATRIX_TYPE::CSR> operator+(const Matrix<double,2,MATRIX_TYPE::CSR> &spm1,
+                                                   const Matrix<double,2,MATRIX_TYPE::CSR> &spm2){
+    sparse_matrix_t *A = new sparse_matrix_t;
+    sparse_matrix_t *B = new sparse_matrix_t;
+
+    mkl_sparse_d_create_csr(A,SPARSE_INDEX_BASE_ZERO,&spm1.rows(),&spm1.cols(),spm1.pointerBData(),spm1.pointerEData(),
+                            spm1.columnssData(),spm1.valuesData());
+
+    mkl_sparse_d_create_csr(B,SPARSE_INDEX_BASE_ZERO,&spm2.rows(),&spm2.cols(),&spm2.pointerBData(),&spm2.pointerEData(),
+                            &spm2.columnssData(),&spm2.valuesData());
+
+    sparse_matrix_t *C = new sparse_matrix_t;
+
+    mkl_sparse_d_add(SPARSE_OPERATION_NON_TRANSPOSE,A,1.0,B,C);
+
+    //std::vector<uint32_t> pointerB(spm1.rows());
+    //std::vector<uint32_t> pointerE(spm1.rows());
+
+
+    //mkl_sparse_c_export_csr(C,SPARSE_INDEX_BASE_ZERO,&spm1.rows(),&spm1.cols(),)
+
+}
+/******************************************************************************/
 /*****************************Matrix Multiplication********************************/
 inline Matrix<double,2> operator*(const Matrix<double,2> &m1,const Matrix<double,2> &m2){
     size_t m1_rows = m1.rows();

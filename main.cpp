@@ -20,10 +20,10 @@ int main(){
                            {3,6,8,9},
                            {4,7,9,10}};
 
-    Matrix<double,2> M2 = {{0,0,0,0},
-                           {0,0,0,0},
-                           {0,0,0,0},
-                           {0,0,0,0}};
+    Matrix<double,2> M2 = {{2,0,0,0},
+                           {0,0,4,0},
+                           {0,5,0,0},
+                           {1,0,0,0}};
 
     Matrix<double,2> M3 = M1 + M2 + M1;
 
@@ -124,6 +124,21 @@ int main(){
 
     cout << SpM11 << endl;
     cout << SpM22 << endl;
+
+    Matrix<complexd,2> CM5 = {{complexd(0,0),complexd(0,1),complexd(0,0),complexd(1,2)},
+                             {complexd(1,0),complexd(0,0),complexd(1,2),complexd(0,0)},
+                             {complexd(2,0),complexd(2,1),complexd(2,2),complexd(2,3)}};
+
+    cout << CM5 << endl;
+    Matrix<complexd,2,MATRIX_TYPE::CSR> SCM1(CM5);
+    Matrix<complexd,2,MATRIX_TYPE::CSR3> SCM2(CM5);
+
+    cout << SCM1 << endl;
+    cout << SCM2 << endl;
+
+    SCM1.printData();
+    SCM2.printData();
+
     //SM.printData();
 
 
