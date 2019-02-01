@@ -20,10 +20,10 @@ int main(){
                            {3,6,8,9},
                            {4,7,9,10}};
 
-    Matrix<double,2> M2 = {{2,0,0,0},
-                           {0,0,4,0},
-                           {0,5,0,0},
-                           {1,0,0,0}};
+    Matrix<double,2> M2 = {{0,0,0,0},
+                           {3,0,0,3},
+                           {3,3,0,0},
+                           {3,0,3,0}};
 
     Matrix<double,2> M3 = M1 + M2 + M1;
 
@@ -110,7 +110,7 @@ int main(){
     cout << SpM2 << endl;
     SpM2.printData();
 
-    vector<uint32_t> iindx = {1,2,3};
+    vector<uint32_t> iindx = {1,2,3,0};
     vector<uint32_t> jindx = {0,1,2,3};
 
     Matrix<double,2,MATRIX_TYPE::CSR> SpM11 = SpM1(iindx,jindx);
@@ -138,6 +138,16 @@ int main(){
 
     SCM1.printData();
     SCM2.printData();
+
+    cout << SpM11 << endl;
+    cout << SpM1 << endl;
+
+
+    Matrix<double,2,MATRIX_TYPE::CSR> SpM3 = SpM11 - SpM1;
+
+    cout <<  SpM3 <<  endl;
+
+    SpM3.printData();
 
     //SM.printData();
 
