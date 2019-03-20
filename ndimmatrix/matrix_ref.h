@@ -19,8 +19,8 @@ public:
 
     //TODO Faltan constructores aqui...
 
-    T* data(){return m_ptr;}
-    const T* data()const{return m_ptr;}
+    T* data(){return m_ptr+m_desc.m_start;}
+    const T* data()const{return m_ptr+m_desc.m_start;}
     const Matrix_Slice<N>& descriptor() const noexcept{return m_desc;}
     size_t size() const noexcept {return m_desc.m_size;}
     size_t extent(size_t n) const{
@@ -90,8 +90,8 @@ public:
     Matrix_Ref(T *p,const Matrix_Slice<2> &d):m_desc{d},m_ptr{p}{}
     //TODO Faltan constructores aqui...
 
-    T* data() noexcept{return m_ptr;}
-    const T* data() const noexcept{return m_ptr;}
+    T* data() noexcept{return m_ptr+m_desc.m_start;}
+    const T* data() const noexcept{return m_ptr+m_desc.m_start;}
     const Matrix_Slice<2>& descriptor() const noexcept { return m_desc; }
     size_t size() const noexcept {return m_desc.m_size;}
     size_t extent(size_t n) const{
@@ -156,8 +156,8 @@ public:
     Matrix_Ref(T *p,const Matrix_Slice<1> &d):m_desc{d},m_ptr{p}{}
     //TODO Faltan constructores aqui...
 
-    T* data() noexcept{return m_ptr;}
-    const T* data() const noexcept{return m_ptr;}
+    T* data() noexcept{return m_ptr+m_desc.m_start;}
+    const T* data() const noexcept{return m_ptr+m_desc.m_start;}
     const Matrix_Slice<1>& descriptor() const noexcept { return m_desc; }
     size_t size() const noexcept {return m_desc.m_size;}
 

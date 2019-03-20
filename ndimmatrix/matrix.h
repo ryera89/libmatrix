@@ -8,7 +8,16 @@
 #include "matrix_ref.h"
 #include <iostream>
 #include <iomanip>
+#include <map>
+
+//We must define MKL_Complex16 type before include the mkl.h header
+//#define MKL_Complex16 std::complex<double>
+//#define MKL_INT uint32_t
 #include "mkl.h"
+
+
+
+using std::vector;
 
 enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
 
@@ -34,37 +43,35 @@ public:
     //Default constructor and destructor
     Matrix() = default;
     ~Matrix() = default;
-
     //Move constructor and assignment
     Matrix(Matrix&&) = default;
     Matrix& operator=(Matrix&&) = default;
-
     //Copy constructor and assignment
     Matrix(const Matrix&) = default;
     Matrix& operator=(const Matrix&) = default;
-
-    template<typename... Exts>
+    //Initialization from extents
+    template<typename... Exts,typename = typename std::enable_if_t<sizeof... (Exts) == N>>
     Matrix(Exts... exts):m_desc(0,{exts...}),m_elems(m_desc.m_size){}
 
-    Matrix(const Matrix_Ref<T,N> &ref){
-        //static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
-        m_desc.m_start = 0;
-        m_desc.m_extents = ref.descriptor().m_extents;
-        m_desc.init();
-        m_elems.resize(m_desc.m_size);
-        Matrix_Ref<T,N> mref{begin(),m_desc};
-        assing_slice_vals(ref,mref);
-    }
-    Matrix& operator = (const Matrix_Ref<T,N> &ref){
-        //static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
-        m_desc.m_start = 0;
-        m_desc.m_extents = ref.descriptor().m_extents;
-        m_desc.init();
-        m_elems.resize(m_desc.m_size);
-        Matrix_Ref<T,N> mref{begin(),m_desc};
-        assing_slice_vals(ref,mref);
-        return *this;
-    }
+//    Matrix(const Matrix_Ref<T,N> &ref){
+//        //static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+//        m_desc.m_start = 0;
+//        m_desc.m_extents = ref.descriptor().m_extents;
+//        m_desc.init();
+//        m_elems.resize(m_desc.m_size);
+//        Matrix_Ref<T,N> mref{begin(),m_desc};
+//        assing_slice_vals(ref,mref);
+//    }
+//    Matrix& operator = (const Matrix_Ref<T,N> &ref){
+//        //static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+//        m_desc.m_start = 0;
+//        m_desc.m_extents = ref.descriptor().m_extents;
+//        m_desc.init();
+//        m_elems.resize(m_desc.m_size);
+//        Matrix_Ref<T,N> mref{begin(),m_desc};
+//        assing_slice_vals(ref,mref);
+//        return *this;
+//    }
     //Construction and assignment from nested initializars
     Matrix(Matrix_Initializer<T,N> init){
         derive_extents(m_desc._extents,init);
@@ -80,7 +87,6 @@ public:
         assert(m_elems.size() == m_desc.m_size);
         return *this;
     }
-
     Matrix& operator=(const T &val){
         m_elems = val;
         return *this;
@@ -101,16 +107,16 @@ public:
         return m_desc.m_extents[n];
     }
 
-    //std::valarray<T>& valarray() {return m_elems;}
-    const std::valarray<T>& valarray() const{return m_elems;}
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
 
     auto begin(){return std::begin(m_elems);}
     auto begin() const{return std::cbegin(m_elems);}
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    Matrix apply(T (func)(T val)){Matrix r(m_desc.m_extents); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix apply(T (func)(const T&)) const{Matrix r(m_desc.m_extents); std::transform(begin(),end(),r.begin(),func); return r;}
+    //Matrix apply(T (func)(T)){Matrix r(m_desc.m_extents); std::transform(begin(),end(),r.begin(),func); return r;}
+    Matrix apply(T (func)(T)) const{Matrix r(*this); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
 
     Matrix_Ref<T,N-1> row(size_t i){
@@ -196,14 +202,14 @@ public:
     {
         assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
                           m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
-        m_elems+=m.valarray();
+        m_elems+=m.values();
         return *this;
     }
     Matrix& operator-=(const Matrix<T,N> &m)
     {
         assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
                           m.descriptor().m_extents.begin(),m.descriptor().m_extents.end()));
-        m_elems-=m.valarray();
+        m_elems-=m.values();
         return *this;
     }
     template<typename U>
@@ -305,8 +311,8 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    //std::valarray<T>& valarray() {return m_elems;}
-    const std::valarray<T>& valarray() const{return m_elems;}
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix apply(T (func)(const T&)) const{Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -379,7 +385,7 @@ public:
         }
         return res;
     }
-    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+    Matrix<T,2> operator()(const vector<uint32_t> &indx1,const vector<uint32_t> &indx2) const{
         size_t nrow = indx1.size();
         size_t ncol = indx2.size();
 
@@ -420,13 +426,13 @@ public:
     Matrix& operator+=(const Matrix<T,2> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems+=m.valarray();
+        m_elems+=m.values();
         return *this;
     }
     Matrix& operator-=(const Matrix<T,2> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems-=m.valarray();
+        m_elems-=m.values();
         return *this;
     }
     template<typename U>
@@ -493,8 +499,8 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    //std::valarray<T>& valarray() {return m_elems;}
-    const std::valarray<T>& valarray() const{return m_elems;}
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix apply(T (func)(const T&)) const{Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -522,7 +528,7 @@ public:
         }
         return res;
     }
-    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+    Matrix<T,2> operator()(const vector<uint32_t> &indx1,const vector<uint32_t> &indx2) const{
         size_t nrow = indx1.size();
         size_t ncol = indx2.size();
 
@@ -569,13 +575,13 @@ public:
     Matrix& operator+=(const Matrix<T,2,matrix_type> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems+=m.valarray();
+        m_elems+=m.values();
         return *this;
     }
     Matrix& operator-=(const Matrix<T,2,matrix_type> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems-=m.valarray();
+        m_elems-=m.values();
         return *this;
     }
     template<typename U>
@@ -665,8 +671,8 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    //std::valarray<T>& valarray() {return m_elems;}
-    const std::valarray<T>& valarray() const{return m_elems;}
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix apply(T (func)(const T&)) const{Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
@@ -698,7 +704,7 @@ public:
         }
         return res;
     }
-    Matrix<T,2> operator()(const std::vector<uint32_t> &indx1,const std::vector<uint32_t> &indx2) const{
+    Matrix<T,2> operator()(const vector<uint32_t> &indx1,const vector<uint32_t> &indx2) const{
         size_t nrow = indx1.size();
         size_t ncol = indx2.size();
 
@@ -746,14 +752,14 @@ public:
     Matrix& operator+=(const Matrix<U,2,matrix_type> &m)
     {
         assert(rows() == m.rows()); //symmetric matrizes are squared
-        m_elems+=m.valarray();
+        m_elems+=m.values();
         return *this;
     }
     template<typename U>
     Matrix& operator-=(const Matrix<U,2,matrix_type> &m)
     {
         assert(rows() == m.rows()); //symmetric matrizes are squared
-        m_elems-=m.valarray();
+        m_elems-=m.values();
         return *this;
     }
     template<typename U>
@@ -793,219 +799,24 @@ public:
         return *this;
     }
 };
-//template<typename T>
-//class Matrix<T,2,MATRIX_TYPE::CSR>{
-//private:
-//    MKL_INT m_row;
-//    MKL_INT m_col;
-//    std::vector<MKL_INT> m_rows_end;
-//    std::vector<MKL_INT> m_rows_start;
-//    std::vector<MKL_INT> m_columns;
-//    std::vector<T> m_elems;
-//    static constexpr T zero_val = T();
 
-//public:
-//    static constexpr size_t order = 2;
-//    static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR;
-//    using value_type = T;
-
-//    Matrix() = default;
-//    ~Matrix() = default;
-//    //Move constructor and assignment
-//    Matrix(Matrix&&) = default;
-//    Matrix& operator=(Matrix&&) = default;
-//    //Copy constructor and assignment
-//    Matrix(const Matrix&) = default;
-//    Matrix& operator=(const Matrix&) = default;
-
-
-//    Matrix(MKL_INT row,MKL_INT col,const std::vector<MKL_INT> &pointerE,const std::vector<MKL_INT> &pointerB,
-//           const std::vector<MKL_INT> &columns,const std::vector<T> &vals):m_row(row),m_col(col),m_rows_end(pointerE),
-//                                                                               m_rows_start(pointerB),m_columns(columns),m_elems(vals){
-//        assert(m_columns.size() == m_elems.size() && m_row == m_rows_start.size() && m_row == m_rows_end.size());
-//    }
-
-//    Matrix(MKL_INT row,MKL_INT col,std::vector<MKL_INT> &&pointerE,std::vector<MKL_INT> &&pointerB,
-//           std::vector<MKL_INT> &&columns,std::vector<T> &&vals):m_row(row),m_col(col),m_rows_end(pointerE),
-//                                                                     m_rows_start(pointerB),m_columns(columns),m_elems(vals){
-//        assert(m_columns.size() == m_elems.size() && m_row == m_rows_start.size() && m_row == m_rows_end.size());
-//    }
-//    Matrix(const Matrix<T,2> &m):m_row(m.rows()),m_col(m.cols()),m_rows_end(m_row),m_rows_start(m_row){
-//        for (size_t i = 0; i < m_row; ++i){
-//            size_t iitmp = m_row;
-//            for (size_t j = 0; j < m_col; ++j){
-//                T val = m(i,j);
-//                if (val != T()){ //si el valor es distinto de cero
-//                    m_elems.push_back(val);
-//                    m_columns.push_back(j);
-//                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
-//                        m_rows_start[i] = m_elems.size()-1;
-//                        iitmp = i;
-//                    }
-//                }
-//            }
-//            if (iitmp != i){ //una fila llena de zeros
-//                if (m_elems.size() == 0) {m_rows_start[i] = 0; m_rows_end[i] = 0;} /*primeras filas == 0*/
-//                else {m_rows_start[i] = m_elems.size(); m_rows_end[i] = m_elems.size();}
-//            }else{ m_rows_end[i] = m_elems.size();}
-
-//        }
-//    }
-//    Matrix& operator=(const Matrix<T,2> &m){
-//        m_row = m.rows();
-//        m_col = m.cols();
-//        m_rows_end.resize(m_row);
-//        m_rows_start.resize(m_row);
-//        m_columns.clear();
-//        m_elems.clear();
-//        for (size_t i = 0; i < m_row; ++i){
-//            size_t iitmp = m_row;
-//            for (size_t j = 0; j < m_col; ++j){
-//                T val = m(i,j);
-//                if (val != T()){ //si el valor es distinto de cero
-//                    m_elems.push_back(val);
-//                    m_columns.push_back(j);
-//                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
-//                        m_rows_start[i] = m_elems.size()-1;
-//                        iitmp = i;
-//                    }
-//                }
-//            }
-//            if (iitmp != i){ //una fila llena de zeros
-//                if (m_elems.size() == 0) {m_rows_start[i] = 0; m_rows_end[i] = 0;} /*primeras filas == 0*/
-//                else {m_rows_start[i] = m_elems.size(); m_rows_end[i] = m_elems.size();}
-//            }else{ m_rows_end[i] = m_elems.size();}
-
-//        }
-//    }
-//    const T& operator()(uint32_t i,uint32_t j) const{
-//        assert(i < m_row && j < m_col);
-//        uint32_t beg = m_rows_start[i];
-//        uint32_t end = m_rows_end[i];
-
-//        if (beg == end) return zero_val;
-//        if (j < m_columns[beg]) return zero_val;
-//        if (j > m_columns[end-1]) return zero_val;
-
-//        for (;beg<end;++beg){
-//            if (m_columns[beg] == j) return m_elems[beg];
-//        }
-//        return zero_val;
-//    }
-//    Matrix operator()(const std::valarray<uint32_t> &iindex,const std::valarray<uint32_t> &jindex) const{
-//        size_t nrow = iindex.size();
-//        size_t ncol = jindex.size();
-
-//        std::vector<T> elems;
-//        std::vector<uint32_t> columns;
-//        std::vector<uint32_t> pointerB(nrow);
-//        std::vector<uint32_t> pointerE(nrow);
-
-//        for (uint32_t i = 0; i < nrow; ++i){
-//            uint32_t itmp = nrow;
-//            uint32_t ii = iindex[i];
-//            for (uint32_t j = 0; j < ncol; ++j){
-//                uint32_t jj = jindex[j];
-//                T val = this->operator()(ii,jj);
-//                if (val != T()){ //si el valor es distinto de cero
-//                    elems.push_back(val);
-//                    columns.push_back(j);
-//                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
-//                        pointerB[i] = elems.size()-1;
-//                        itmp = i;
-//                    }
-//                }
-//            }
-//            if (itmp != i){ //una fila llena de zeros
-//                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
-//                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
-//            }else{ pointerE[i] = elems.size();}
-//        }
-
-//        return Matrix(nrow,ncol,pointerE,pointerB,columns,elems);
-//    }
-//    Matrix operator()(const std::vector<uint32_t> &iindex,const std::vector<uint32_t> &jindex) const{
-//        MKL_INT nrow = iindex.size();
-//        MKL_INT ncol = jindex.size();
-
-//        std::vector<T> elems;
-//        std::vector<MKL_INT> columns;
-//        std::vector<MKL_INT> pointerB(nrow);
-//        std::vector<MKL_INT> pointerE(nrow);
-
-//        for (MKL_INT i = 0; i < nrow; ++i){
-//            MKL_INT itmp = nrow;
-//            uint32_t ii = iindex[i];
-//            for (MKL_INT j = 0; j < ncol; ++j){
-//                uint32_t jj = jindex[j];
-//                T val = this->operator()(ii,jj);
-//                if (val != T()){ //si el valor es distinto de cero
-//                    elems.push_back(val);
-//                    columns.push_back(j);
-//                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
-//                        pointerB[i] = elems.size()-1;
-//                        itmp = i;
-//                    }
-//                }
-//            }
-//            if (itmp != i){ //una fila llena de zeros
-//                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
-//                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
-//            }else{ pointerE[i] = elems.size();}
-//        }
-
-//        return Matrix(nrow,ncol,pointerE,pointerB,columns,elems);
-//    }
-
-//    MKL_INT rows() const{return m_row;}
-//    MKL_INT cols() const{return m_col;}
-
-//    void printData(){
-//        printf("values: ( ");
-//        for (auto &vals : m_elems) printf("%f ",vals);
-//        printf(") \n");
-//        printf("column: ( ");
-//        for (auto &vals : m_columns) printf("%u ",vals);
-//        printf(") \n");
-//        printf("pointerB: ( ");
-//        for (auto &vals : m_rows_start) printf("%u ",vals);
-//        printf(") \n");
-//        printf("pointerE: ( ");
-//        for (auto &vals : m_rows_end) printf("%u ",vals);
-//        printf(") \n");
-//    }
-//    auto begin(){return std::begin(m_elems);}
-//    auto begin() const{return std::cbegin(m_elems);}
-
-//    auto end(){return std::end(m_elems);}
-//    auto end() const{return std::cend(m_elems);}
-
-//    auto columnssData(){return m_columns.data();}
-//    auto columnssData() const {return m_columns.data();}
-
-//    auto rowsStartData(){return m_rows_start.data();}
-//    auto rowsStartData() const{return m_rows_start.data();}
-
-//    auto rowsEndData(){return m_rows_end.data();}
-//    auto rowsEndData() const{return m_rows_end.data();}
-
-//    auto valuesData(){return m_elems.data();}
-//    auto valuesData() const{return m_elems.data();}
-//};
+typedef int int_t;
 template<typename T>
 class Matrix<T,2,MATRIX_TYPE::CSR>{
 private:
     uint32_t m_rows;
     uint32_t m_cols;
-    std::vector<uint32_t> m_rows_start;
-    std::vector<uint32_t> m_rows_end;
-    std::vector<uint32_t> m_columns;
-    std::vector<T> m_elems;
+    vector<int_t> m_rows_start;
+    vector<int_t> m_rows_end;
+    vector<int_t> m_columns;
+    vector<T> m_elems;
     static constexpr T zero_val = T();
 public:
     static constexpr size_t order = 2;
     static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR;
     using value_type = T;
+    using iterator = typename vector<T>::iterator;
+    using const_iterator = typename vector<T>::const_iterator;
 
     Matrix() = default;
     ~Matrix() = default;
@@ -1017,37 +828,47 @@ public:
     Matrix& operator=(const Matrix&) = default;
 
 
-    Matrix(uint32_t rows,uint32_t cols,const std::vector<uint32_t> &rows_start,const std::vector<uint32_t> &rows_end,
-           const std::vector<uint32_t> &columns,const std::vector<T> &vals):m_rows(rows),m_cols(cols),m_rows_start(rows_start),
+    Matrix(uint32_t rows,uint32_t cols,const vector<int_t> &rows_start,const vector<int_t> &rows_end,
+           const vector<int_t> &columns,const vector<T> &vals):m_rows(rows),m_cols(cols),m_rows_start(rows_start),
                                                                              m_rows_end(rows_end),m_columns(columns),m_elems(vals){
         assert(m_columns.size() == m_elems.size() && m_rows == m_rows_start.size() && m_rows == m_rows_end.size());
+        m_elems.shrink_to_fit();
+        m_columns.shrink_to_fit();
+        m_rows_start.shrink_to_fit();
+        m_rows_end.shrink_to_fit();
     }
 
-    Matrix(uint32_t rows,uint32_t cols,std::vector<uint32_t> &&rows_start,std::vector<uint32_t> &&rows_end,std::vector<uint32_t> &&columns,
-           std::vector<T> &&vals):m_rows(rows),m_cols(cols),m_rows_start(rows_start),m_rows_end(rows_end),m_columns(columns),m_elems(vals){
+    Matrix(uint32_t rows,uint32_t cols,vector<int_t> &&rows_start,vector<int_t> &&rows_end,vector<int_t> &&columns,
+           vector<T> &&vals):m_rows(rows),m_cols(cols),m_rows_start(rows_start),m_rows_end(rows_end),m_columns(columns),m_elems(vals){
         assert(m_columns.size() == m_elems.size() && m_rows == m_rows_start.size() && m_rows == m_rows_end.size());
+        m_elems.shrink_to_fit();
+        m_columns.shrink_to_fit();
+        m_rows_start.shrink_to_fit();
+        m_rows_end.shrink_to_fit();
     }
     Matrix(const Matrix<T,2> &m):m_rows(m.rows()),m_cols(m.cols()),m_rows_start(m_rows),m_rows_end(m_rows){
         for (size_t i = 0; i < m_rows; ++i){
-            size_t iitmp = m_rows;
+            bool row_first_nonzero = true;
             for (size_t j = 0; j < m_cols; ++j){
                 T val = m(i,j);
                 if (val != T()){ //si el valor es distinto de cero
                     m_elems.push_back(val);
                     m_columns.push_back(j);
-                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                    if (row_first_nonzero){ //se ejecuta maximo solo una ves del loop principal i
                         m_rows_start[i] = m_elems.size()-1;
-                        iitmp = i;
+                        row_first_nonzero = false;
                     }
                 }
             }
-            if (iitmp != i){ //una fila llena de zeros
+            if (row_first_nonzero){ //una fila llena de zeros
                 m_rows_start[i] = m_elems.size();
                 m_rows_end[i] = m_elems.size();
             }else{ m_rows_end[i] = m_elems.size();}
-
         }
     }
+
+    size_t nnz() const{return m_elems.size();}
+
     Matrix& operator=(const Matrix<T,2> &m){
         m_rows = m.rows();
         m_cols = m.cols();
@@ -1056,171 +877,183 @@ public:
         m_columns.clear();
         m_elems.clear();
         for (size_t i = 0; i < m_rows; ++i){
-            size_t iitmp = m_rows;
+            bool row_first_nonzero = true;
             for (size_t j = 0; j < m_cols; ++j){
                 T val = m(i,j);
                 if (val != T()){ //si el valor es distinto de cero
                     m_elems.push_back(val);
                     m_columns.push_back(j);
-                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                    if (row_first_nonzero){ //se ejecuta maximo solo una ves del loop principal i
                         m_rows_start[i] = m_elems.size()-1;
-                        iitmp = i;
+                        row_first_nonzero = false;
                     }
                 }
             }
-            if (iitmp != i){ //una fila llena de zeros
+            if (row_first_nonzero){ //una fila llena de zeros
                 m_rows_start[i] = m_elems.size();
                 m_rows_end[i] = m_elems.size();
             }else{ m_rows_end[i] = m_elems.size();}
         }
         return *this;
     }
-    const T& operator()(uint32_t i,uint32_t j) const{
+    const T& operator()(size_t i,size_t j) const{
         assert(i < m_rows && j < m_cols);
-        uint32_t beg = m_rows_start[i];
-        uint32_t end = m_rows_end[i];
+        int_t beg = m_rows_start[i];
+        int_t end = m_rows_end[i];
 
-        if (beg == end) return zero_val;
-        if (j < m_columns[beg]) return zero_val;
-        if (j > m_columns[end-1]) return zero_val;
+        if (beg == end) return zero_val; //row i is full of 0
+        if (j < m_columns[beg] || j > m_columns[end-1]) return zero_val;
 
-        for (;beg<end;++beg){
-            if (m_columns[beg] == j) return m_elems[beg];
+        std::pair<vector<int_t>::const_iterator,vector<int_t>::const_iterator> ip;
+        ip = std::equal_range(m_columns.cbegin()+beg,m_columns.cbegin()+end,j);
+        int tmp = std::distance(ip.first,ip.second);
+        if (tmp > 0){
+            size_t pos = ip.first - m_columns.begin();
+            return m_elems[pos];
         }
         return zero_val;
     }
-    Matrix operator()(const std::valarray<uint32_t> &iindex,const std::valarray<uint32_t> &jindex) const{
-        size_t nrow = iindex.size();
-        size_t ncol = jindex.size();
-
-        std::vector<T> elems;
-        std::vector<uint32_t> columns;
-        std::vector<uint32_t> pointerB(nrow);
-        std::vector<uint32_t> pointerE(nrow);
-
-        for (uint32_t i = 0; i < nrow; ++i){
-            uint32_t itmp = nrow;
-            uint32_t ii = iindex[i];
-            for (uint32_t j = 0; j < ncol; ++j){
-                uint32_t jj = jindex[j];
-                T val = this->operator()(ii,jj);
-                if (val != T()){ //si el valor es distinto de cero
-                    elems.push_back(val);
-                    columns.push_back(j);
-                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
-                        pointerB[i] = elems.size()-1;
-                        itmp = i;
-                    }
-                }
-            }
-            if (itmp != i){ //una fila llena de zeros
-                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
-                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
-            }else{ pointerE[i] = elems.size();}
-        }
-
-        return Matrix(nrow,ncol,pointerB,pointerE,columns,elems);
-    }
-    Matrix operator()(const std::vector<uint32_t> &iindex,const std::vector<uint32_t> &jindex) const{
+    Matrix operator()(const vector<uint32_t> &iindex,const vector<uint32_t> &jindex) const{
         uint32_t nrow = iindex.size();
         uint32_t ncol = jindex.size();
 
-        std::vector<T> elems;
-        std::vector<uint32_t> columns;
-        std::vector<uint32_t> pointerB(nrow);
-        std::vector<uint32_t> pointerE(nrow);
+        vector<T> elems;
+        elems.reserve(m_elems.size());
+        vector<int_t> columns;
+        columns.reserve(m_elems.size());
+        vector<int_t> pointerB(nrow);
+        vector<int_t> pointerE(nrow);
+
 
         for (uint32_t i = 0; i < nrow; ++i){
-            uint32_t itmp = nrow;
+            bool rfirst_inclusion =  true;
             uint32_t ii = iindex[i];
-            for (uint32_t j = 0; j < ncol; ++j){
-                uint32_t jj = jindex[j];
-                T val = this->operator()(ii,jj);
-                if (val != T()){ //si el valor es distinto de cero
-                    elems.push_back(val);
-                    columns.push_back(j);
-                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
-                        pointerB[i] = elems.size()-1;
-                        itmp = i;
+            int_t ibeg = m_rows_start[ii];
+            int_t iend = m_rows_end[ii];
+            if (ibeg == iend){ //fila todos zeros
+                pointerB[i] = elems.size(); pointerE[i] = elems.size();
+                continue;
+            }
+            int_t icolb = m_columns[ibeg];
+            int_t icole = m_columns[iend-1];
+            for (int_t j = 0; j < ncol; ++j){
+                int_t jj = jindex[j];
+                if (jj < icolb || jj > icole) continue; //A(ii,jj) = 0; no esta entre los valores
+                //std::pair<vector<int_t>::const_iterator,vector<int_t>::const_iterator> ip;
+                //ip = std::equal_range(m_columns.cbegin()+ibeg,m_columns.cbegin()+iend,jj);
+                //vector<int_t>::const_iterator it = std::lower_bound(m_columns.cbegin()+ibeg,m_columns.cbegin()+iend,jj);
+                //int tmp = std::distance(ip.first,ip.second);
+                vector<int_t>::const_iterator bit = m_columns.cbegin()+ibeg;
+                vector<int_t>::const_iterator eit = m_columns.cbegin()+iend;
+                vector<int_t>::const_iterator it;
+                int64_t count = std::distance(bit,eit);
+                int64_t step;
+                while(count > 0){
+                    it = bit;
+                    step = count/2;
+                    std::advance(it,step);
+                    if (*it == jj){ //value found
+                        int64_t pos = std::distance(m_columns.begin(),it);
+                        T val = m_elems[pos];
+                        elems.push_back(val);
+                        columns.push_back(j);
+                        if (rfirst_inclusion){ //se ejecuta maximo solo una ves del loop principal i
+                            pointerB[i] = elems.size()-1;
+                            rfirst_inclusion = false;
+                        }
+                        break;
+                    }
+                    if (*it < jj){
+                        bit = ++it;
+                        count -= step+1;
+                    }else{
+                        count = step;
                     }
                 }
+//                if (*it == jj){
+//                    //size_t pos = ip.first - m_columns.begin();
+//                    size_t pos = it - m_columns.begin();
+//                    T val = m_elems[pos];
+//                    elems.push_back(val);
+//                    columns.push_back(j);
+//                    if (rfirst_inclusion){ //se ejecuta maximo solo una ves del loop principal i
+//                        pointerB[i] = elems.size()-1;
+//                        rfirst_inclusion = false;
+//                    }
+//                }
             }
-            if (itmp != i){ //una fila llena de zeros
-                if (elems.size() == 0) {pointerB[i] = 0; pointerE[i] = 0;} /*primeras filas == 0*/
-                else {pointerB[i] = elems.size(); pointerE[i] = elems.size();}
+            if (rfirst_inclusion){ //una fila llena de zeros
+                pointerB[i] = elems.size(); pointerE[i] = elems.size();
             }else{ pointerE[i] = elems.size();}
         }
-
         return Matrix(nrow,ncol,pointerB,pointerE,columns,elems);
     }
 
     uint32_t rows() const{return m_rows;}
     uint32_t cols() const{return m_cols;}
 
-    void printData(){
-        printf("values: ( ");
-        for (auto &vals : m_elems) std::cout  << vals << " ";
-        printf(") \n");
-        printf("column: ( ");
-        for (auto &vals : m_columns) std::cout << vals << " ";
-        printf(") \n");
-        printf("pointerB: ( ");
-        for (auto &vals : m_rows_start) std::cout <<  vals << " ";
-        printf(") \n");
-        printf("pointerE: ( ");
-        for (auto &vals : m_rows_end) std::cout << vals << " ";
-        printf(") \n");
+    void printData() const{
+        for (size_t i = 0; i < m_rows_start.size(); ++i){
+            uint32_t beg = m_rows_start[i];
+            uint32_t end = m_rows_end[i];
+            for (;beg<end;++beg){
+                std::cout << "(" << i << "," << m_columns[beg] << ") " << m_elems[beg] << "\n";
+            }
+        }
     }
-    auto values() const{return m_elems;}
-    auto columns() const{return m_columns;}
-    auto row_start() const{return m_rows_start;}
-    auto row_end() const{return m_rows_end;}
 
-    auto beginColumns(){return m_columns.begin();}
-    auto beginColumns() const {return m_columns.cbegin();}
-    auto endColumns(){return m_columns.end();}
-    auto endColumns() const {return m_columns.cend();}
+    const vector<T>& values() const{return m_elems;}
+    const vector<int_t>& columns() const{return m_columns;}
+    const vector<int_t>& row_start() const{return m_rows_start;}
+    const vector<int_t>& row_end() const{return m_rows_end;}
 
-    auto beginRowsStart(){return m_rows_start.begin();}
-    auto beginRowsStart() const{return m_rows_start.cbegin();}
-    auto endRowsStart(){return m_rows_start.end();}
-    auto endRowsStart() const{return m_rows_start.cend();}
+    vector<int_t>::iterator beginColumns(){return m_columns.begin();}
+    vector<int_t>::const_iterator beginColumns() const {return m_columns.cbegin();}
+    vector<int_t>::iterator endColumns(){return m_columns.end();}
+    vector<int_t>::const_iterator endColumns() const {return m_columns.cend();}
 
-    auto beginRowsEnd(){return m_rows_end.begin();}
-    auto beginRowsEnd() const{return m_rows_end.cbegin();}
-    auto endRowsEnd(){return m_rows_end.end();}
-    auto endRowsEnd() const{return m_rows_end.cend();}
+    vector<int_t>::iterator beginRowsStart(){return m_rows_start.begin();}
+    vector<int_t>::const_iterator beginRowsStart() const{return m_rows_start.cbegin();}
+    vector<int_t>::iterator endRowsStart(){return m_rows_start.end();}
+    vector<int_t>::const_iterator endRowsStart() const{return m_rows_start.cend();}
 
-    auto beginValues(){return std::begin(m_elems);}
-    auto beginValues() const{return std::cbegin(m_elems);}
-    auto endValues(){return std::end(m_elems);}
-    auto endValues() const{return std::cend(m_elems);}
+    vector<int_t>::iterator beginRowsEnd(){return m_rows_end.begin();}
+    vector<int_t>::const_iterator beginRowsEnd() const{return m_rows_end.cbegin();}
+    vector<int_t>::iterator endRowsEnd(){return m_rows_end.end();}
+    vector<int_t>::const_iterator endRowsEnd() const{return m_rows_end.cend();}
 
-    auto columnsData(){return m_columns.data();}
-    auto columnsData() const {return m_columns.data();}
+    iterator beginValues(){return m_elems.begin();}
+    const_iterator beginValues() const{return m_elems.cbegin();}
+    iterator endValues(){return m_elems.end();}
+    const_iterator endValues() const{return m_elems.cend();}
 
-    auto rowsStartData(){return m_rows_start.data();}
-    auto rowsStartData() const{return m_rows_start.data();}
+    int_t* columnsData(){return m_columns.data();}
+    const int_t* columnsData() const {return m_columns.data();}
 
-    auto rowsEndData(){return m_rows_end.data();}
-    auto rowsEndData() const{return m_rows_end.data();}
+    int_t* rowsStartData(){return m_rows_start.data();}
+    const int_t* rowsStartData() const{return m_rows_start.data();}
 
-    auto valuesData(){return m_elems.data();}
-    auto valuesData() const{return m_elems.data();}
+    int_t* rowsEndData(){return m_rows_end.data();}
+    const int_t* rowsEndData() const{return m_rows_end.data();}
+
+    T* valuesData(){return m_elems.data();}
+    const T* valuesData() const{return m_elems.data();}
 };
 template<typename T>
 class Matrix<T,2,MATRIX_TYPE::CSR3>{
 private:
-    size_t m_row;
-    size_t m_col;
-    std::vector<uint32_t> m_rowIndex;
-    std::vector<uint32_t> m_columns;
-    std::vector<T> m_elems;
+    uint32_t m_rows;
+    uint32_t m_cols;
+    vector<int_t> m_rowIndex;
+    vector<int_t> m_columns;
+    vector<T> m_elems;
     static constexpr T zero_val = T();
 public:
     static constexpr size_t order = 2;
     static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR3;
     using value_type = T;
+    using iterator = typename vector<T>::iterator;
+    using const_iterator = typename vector<T>::const_iterator;
 
     Matrix() = default;
     ~Matrix() = default;
@@ -1232,168 +1065,165 @@ public:
     Matrix& operator=(const Matrix&) = default;
 
 
-    Matrix(size_t row,size_t col,const std::vector<uint32_t> &rowIndex,const std::vector<uint32_t> &columns,const std::vector<T> &vals):
-                                                                     m_row(row),m_col(col),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
-        assert(m_columns.size() == m_elems.size() && m_row == (m_rowIndex.size()-1));
+    Matrix(uint32_t rows,uint32_t cols,const vector<int_t> &rowIndex,const vector<int_t> &columns,const vector<T> &vals):
+                                                                     m_rows(rows),m_cols(cols),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
+        assert(m_columns.size() == m_elems.size() && m_rows == (m_rowIndex.size()-1));
 
     }
-    Matrix(size_t row,size_t col,std::vector<uint32_t> &&rowIndex,std::vector<uint32_t> &&columns,std::vector<T> &&vals):
-                                                                     m_row(row),m_col(col),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
-        assert(m_columns.size() == m_elems.size() && m_row == (m_rowIndex.size()-1));
+    Matrix(uint32_t rows,uint32_t cols,vector<int_t> &&rowIndex,vector<int_t> &&columns,vector<T> &&vals):
+                                                                     m_rows(rows),m_cols(cols),m_elems(vals),m_columns(columns),m_rowIndex(rowIndex){
+        assert(m_columns.size() == m_elems.size() && m_rows == (m_rowIndex.size()-1));
     }
-    Matrix(const Matrix<T,2> &m):m_row(m.rows()),m_col(m.cols()),m_rowIndex(m_row+1){
-        for (size_t i = 0; i < m_row; ++i){
-            size_t iitmp = m_row;
-            for (size_t j = 0; j < m_col; ++j){
+    Matrix(const Matrix<T,2> &m):m_rows(m.rows()),m_cols(m.cols()),m_rowIndex(m_rows+1){
+        for (uint32_t i = 0; i < m_rows; ++i){
+            bool first_row_inclusion = true;
+            for (uint32_t j = 0; j < m_cols; ++j){
                 T val = m(i,j);
                 if (val != T()){ //si el valor es distinto de cero
                     m_elems.push_back(val);
                     m_columns.push_back(j);
-                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                    if (first_row_inclusion){ //se ejecuta maximo solo una ves del loop principal i
                         m_rowIndex[i] = m_elems.size()-1;
-                        iitmp = i;
+                        first_row_inclusion = false;
                     }
                 }
             }
-            if (iitmp != i){ //una fila llena de zeros
+            if (first_row_inclusion){ //una fila llena de zeros
                 if (m_elems.size() == 0) {m_rowIndex[i] = 0;} /*primeras filas == 0*/
                 else {m_rowIndex[i] = m_elems.size();}
             }
         }
-        m_rowIndex[m_row] = m_elems.size();
+        m_rowIndex[m_rows] = m_elems.size();
     }
     Matrix& operator=(const Matrix<T,2> &m){
-        m_row = m.rows();
-        m_col = m.cols();
-        m_rowIndex.resize(m_row+1);
+        m_rows = m.rows();
+        m_cols = m.cols();
+        m_rowIndex.resize(m_rows+1);
         m_columns.clear();
         m_elems.clear();
-        for (size_t i = 0; i < m_row; ++i){
-            size_t iitmp = m_row;
-            for (size_t j = 0; j < m_col; ++j){
+        for (uint32_t i = 0; i < m_rows; ++i){
+            bool first_row_inclusion = true;
+            for (uint32_t j = 0; j < m_cols; ++j){
                 T val = m(i,j);
                 if (val != T()){ //si el valor es distinto de cero
                     m_elems.push_back(val);
                     m_columns.push_back(j);
-                    if (iitmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                    if (first_row_inclusion){ //se ejecuta maximo solo una ves del loop principal i
                         m_rowIndex[i] = m_elems.size()-1;
-                        iitmp = i;
+                        first_row_inclusion = false;
                     }
                 }
             }
-            if (iitmp != i){ //una fila llena de zeros
+            if (first_row_inclusion){ //una fila llena de zeros
                 if (m_elems.size() == 0) {m_rowIndex[i] = 0;} /*primeras filas == 0*/
                 else {m_rowIndex[i] = m_elems.size();}
             }
         }
-        m_rowIndex[m_row] = m_elems.size();
+        m_rowIndex[m_rows] = m_elems.size();
+        return *this;
     }
-
     const T& operator()(uint32_t i,uint32_t j) const{
-        assert(i < m_row && j < m_col);
-        uint32_t beg = m_rowIndex[i];
-        uint32_t end = m_rowIndex[i+1];
+        assert(i < m_rows && j < m_cols);
+        int_t beg = m_rowIndex[i];
+        int_t end = m_rowIndex[i+1];
 
-        if (beg == end) return zero_val;
-        if (j < m_columns[beg]) return zero_val;
-        if (j > m_columns[end-1]) return zero_val;
+        if (beg == end) return zero_val; //i row full of zeros
+        if (j < m_columns[beg] || j > m_columns[end-1]) return zero_val;
 
-        for (;beg<end;++beg){
-            if (m_columns[beg] == j) return m_elems[beg];
+        std::pair<vector<int_t>::const_iterator,vector<int_t>::const_iterator> ip;
+        ip = std::equal_range(m_columns.cbegin()+beg,m_columns.cbegin()+end,j);
+        int tmp = std::distance(ip.first,ip.second);
+        if (tmp > 0){
+            size_t pos = ip.first - m_columns.begin();
+            return m_elems[pos];
         }
         return zero_val;
     }
-    Matrix operator()(const std::valarray<uint32_t> &iindex,const std::valarray<uint32_t> &jindex) const{
-        size_t nrow = iindex.size();
-        size_t ncol = jindex.size();
+    Matrix operator()(const vector<uint32_t> &iindex,const vector<uint32_t> &jindex) const{
+        uint32_t nrow = iindex.size();
+        uint32_t ncol = jindex.size();
 
-        std::vector<T> elems;
-        std::vector<uint32_t> columns;
-        std::vector<uint32_t> rowIndex(nrow+1);
+        vector<T> elems;
+        elems.reserve(m_elems.size());
+        vector<int_t> columns;
+        columns.reserve(m_elems.size());
+        vector<int_t> rowIndex(nrow+1);
 
         for (uint32_t i = 0; i < nrow; ++i){
-            uint32_t itmp = nrow;
+            bool rfirst_inclusion =  true;
             uint32_t ii = iindex[i];
-            for (uint32_t j = 0; j < ncol; ++j){
+            int_t ibeg = m_rowIndex[ii];
+            int_t iend = m_rowIndex[ii+1];
+            if (ibeg == iend){ //fila todos zeros
+                rowIndex[i] = elems.size(); rowIndex[i+1] = elems.size();
+                continue;
+            }
+            int_t icolb = m_columns[ibeg];
+            int_t icole = m_columns[iend-1];
+            for (int_t j = 0; j < ncol; ++j){
                 uint32_t jj = jindex[j];
-                T val = this->operator()(ii,jj);
-                if (val != T()){ //si el valor es distinto de cero
+                if (jj < icolb || jj > icole) continue; //A(ii,jj) = 0; no esta entre los valores
+                std::pair<vector<int_t>::const_iterator,vector<int_t>::const_iterator> ip;
+                ip = std::equal_range(m_columns.cbegin()+ibeg,m_columns.cbegin()+iend,jj);
+                int tmp = std::distance(ip.first,ip.second);
+                if (tmp > 0){
+                    size_t pos = ip.first - m_columns.begin();
+                    T val = m_elems[pos];
                     elems.push_back(val);
                     columns.push_back(j);
-                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
+                    if (rfirst_inclusion){ //se ejecuta maximo solo una ves del loop principal i
                         rowIndex[i] = elems.size()-1;
-                        itmp = i;
+                        rfirst_inclusion = false;
                     }
                 }
             }
-            if (itmp != i){ //una fila llena de zeros
-                if (elems.size() == 0) {rowIndex[i] = 0;} /*primeras filas == 0*/
-                else {rowIndex[i] = elems.size();}
-            }
+            if (rfirst_inclusion){ //una fila llena de zeros
+                rowIndex[i] = elems.size(); rowIndex[i+1] = elems.size();
+            }else{ rowIndex[i+1] = elems.size();}
         }
-        rowIndex[nrow] = elems.size();
-
-        return Matrix(nrow,ncol,rowIndex,columns,elems);
-    }
-    Matrix operator()(const std::vector<uint32_t> &iindex,const std::vector<uint32_t> &jindex) const{
-        size_t nrow = iindex.size();
-        size_t ncol = jindex.size();
-
-        std::vector<T> elems;
-        std::vector<uint32_t> columns;
-        std::vector<uint32_t> rowIndex(nrow+1);
-
-        for (uint32_t i = 0; i < nrow; ++i){
-            uint32_t itmp = nrow;
-            uint32_t ii = iindex[i];
-            for (uint32_t j = 0; j < ncol; ++j){
-                uint32_t jj = jindex[j];
-                T val = this->operator()(ii,jj);
-                if (val != T()){ //si el valor es distinto de cero
-                    elems.push_back(val);
-                    columns.push_back(j);
-                    if (itmp != i){ //se ejecuta maximo solo una ves del loop principal i
-                        rowIndex[i] = elems.size()-1;
-                        itmp = i;
-                    }
-                }
-            }
-            if (itmp != i){ //una fila llena de zeros
-                if (elems.size() == 0) {rowIndex[i] = 0;} /*primeras filas == 0*/
-                else {rowIndex[i] = elems.size();}
-            }
-        }
-        rowIndex[nrow] = elems.size();
-
         return Matrix(nrow,ncol,rowIndex,columns,elems);
     }
 
-    void printData(){
-        printf("values: ( ");
-        for (auto &vals : m_elems) printf("%f ",vals);
-        printf(") \n");
-        printf("column: ( ");
-        for (auto &vals : m_columns) printf("%u ",vals);
-        printf(") \n");
-        printf("rowIndex: ( ");
-        for (auto &vals : m_rowIndex) printf("%u ",vals);
-        printf(") \n");
+    void printData() const{
+        for (size_t i = 0; i < m_rows; ++i){
+            uint32_t beg = m_rowIndex[i];
+            uint32_t end = m_rowIndex[i+1];
+            for (;beg<end;++beg){
+                std::cout << "(" << i << "," << m_columns[beg] << ") " << m_elems[beg] << "\n";
+            }
+        }
     }
 
-    size_t rows() const{return m_row;}
-    size_t cols() const{return m_col;}
+    size_t rows() const{return m_rows;}
+    size_t cols() const{return m_cols;}
 
-    auto begin(){return std::begin(m_elems);}
-    auto begin() const{return std::cbegin(m_elems);}
+    const vector<T>& values() const{return m_elems;}
+    const vector<int_t>& columns() const{return m_columns;}
+    const vector<int_t>& rowIndex() const{return m_rowIndex;}
 
-    auto end(){return std::end(m_elems);}
-    auto end() const{return std::cend(m_elems);}
+    vector<int_t>::iterator beginColumns(){return m_columns.begin();}
+    vector<int_t>::const_iterator beginColumns() const {return m_columns.cbegin();}
+    vector<int_t>::iterator endColumns(){return m_columns.end();}
+    vector<int_t>::const_iterator endColumns() const {return m_columns.cend();}
 
-    auto columnsData(){return std::begin(m_columns);}
-    auto columnsData() const {return std::cbegin(m_columns);}
+    vector<int_t>::iterator beginRowsStart(){return m_rowIndex.begin();}
+    vector<int_t>::const_iterator beginRowsStart() const{return m_rowIndex.cbegin();}
+    vector<int_t>::iterator endRowsStart(){return m_rowIndex.end();}
+    vector<int_t>::const_iterator endRowsStart() const{return m_rowIndex.cend();}
 
-    auto rowIndexData(){return std::begin(m_rowIndex);}
-    auto rowIndexData() const{return std::cbegin(m_rowIndex);}
+    iterator beginValues(){return m_elems.begin();}
+    const_iterator beginValues() const{return m_elems.cbegin();}
+    iterator endValues(){return m_elems.end();}
+    const_iterator endValues() const{return m_elems.cend();}
+
+    int_t* columnsData(){return m_columns.data();}
+    const int_t* columnsData() const {return m_columns.data();}
+
+    int_t* rowsStartData(){return m_rowIndex.data();}
+    const int_t* rowsStartData() const{return m_rowIndex.data();}
+
+    T* valuesData(){return m_elems.data();}
+    const T* valuesData() const{return m_elems.data();}
 };
 
 template<typename T>
@@ -1457,8 +1287,8 @@ public:
 
     size_t size() const noexcept{return m_elems.size();}
 
-    std::valarray<T>& valarray() {return m_elems;}
-    const std::valarray<T>& valarray() const{return m_elems;}
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
 
     const Matrix_Slice<1>& descriptor() const noexcept{
         return m_desc;
@@ -1516,14 +1346,14 @@ public:
     Matrix& operator+=(const Matrix<U,1> &m)
     {
         assert(this->size() == m.size());
-        m_elems+=m.valarray();
+        m_elems+=m.values();
         return *this;
     }
     template<typename U>
     Matrix& operator-=(const Matrix<U,1> &m)
     {
         assert(this->size() == m.size());
-        m_elems-=m.valarray();
+        m_elems-=m.values();
         return *this;
     }
 
@@ -1710,31 +1540,36 @@ inline Matrix<complexd,N> operator+(const Matrix<complexd,N> &cm,const Matrix<do
     Matrix<complexd,N> r(cm);
     return r+=m;
 }
-template<size_t N>
-inline Matrix<complexd,N> operator+(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
-    Matrix<complexd,N> r(cm);
-    return r+=m;
-}
+//template<size_t N>
+//inline Matrix<complexd,N> operator+(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
+//    Matrix<complexd,N> r(cm);
+//    return r+=m;
+//}
 template<size_t N>
 inline Matrix<complexd,N> operator+(const Matrix<double,N> &m,const Matrix<complexd,N> &cm){
     Matrix<complexd,N> r(cm);
     return r+=m;
 }
-template<size_t N>
-inline Matrix<complexd,N> operator+(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
-    Matrix<complexd,N> r(cm);
-    return r+=m;
-}
+//template<size_t N>
+//inline Matrix<complexd,N> operator+(const Matrix<double,N> &&m,const Matrix<complexd,N> &cm){
+//    Matrix<complexd,N> r(cm);
+//    return r+=m;
+//}
+//template<size_t N>
+//inline Matrix<complexd,N> operator+(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
+//    Matrix<complexd,N> r(cm);
+//    return r+=m;
+//}
 template<size_t N>
 inline Matrix<complexd,N> operator-(const Matrix<complexd,N> &cm,const Matrix<double,N> &m){
     Matrix<complexd,N> r(cm);
     return r-=m;
 }
-template<size_t N>
-inline Matrix<complexd,N> operator-(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
-    Matrix<complexd,N> r(cm);
-    return r-=m;
-}
+//template<size_t N>
+//inline Matrix<complexd,N> operator-(Matrix<complexd,N> &&cm,const Matrix<double,N> &m){
+//    Matrix<complexd,N> r(cm);
+//    return r-=m;
+//}
 template<size_t N>
 inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,const Matrix<complexd,N> &cm){
     assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
@@ -1743,14 +1578,22 @@ inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,const Matrix<compl
     std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
     return r;
 }
-template<size_t N>
-inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
-    assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
-                      cm.descriptor().m_extents.begin(),cm.descriptor().m_extents.end()));
-    Matrix<complexd,N> r(cm);
-    std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
-    return r;
-}
+//template<size_t N>
+//inline Matrix<complexd,N> operator-(const Matrix<double,N> &&m,const Matrix<complexd,N> &cm){
+//    assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
+//                      cm.descriptor().m_extents.begin(),cm.descriptor().m_extents.end()));
+//    Matrix<complexd,N> r(cm);
+//    std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
+//    return r;
+//}
+//template<size_t N>
+//inline Matrix<complexd,N> operator-(const Matrix<double,N> &m,Matrix<complexd,N> &&cm){
+//    assert(std::equal(m.descriptor().m_extents.begin(),m.descriptor().m_extents.end(),
+//                      cm.descriptor().m_extents.begin(),cm.descriptor().m_extents.end()));
+//    Matrix<complexd,N> r(cm);
+//    std::transform(m.begin(),m.end(),r.begin(),r.begin(),[](const auto &v1,const auto &v2){return v1-v2;});
+//    return r;
+//}
 
 /*****************************************************************************/
 /******************************sparse matrix operations************************/
@@ -1765,25 +1608,26 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator+(const Matrix<T,2,MATRIX_TYPE::CSR>
     if (spm1.values().size() == 0 ) return spm2;
     if (spm2.values().size() == 0) return spm1;
 
-    std::vector<uint32_t> rowStart(nrows);
-    std::vector<uint32_t> rowEnd(nrows);
-    std::vector<uint32_t> columns;
-    std::vector<T> vals;
-
+    vector<int_t> rowStart(nrows);
+    vector<int_t> rowEnd(nrows);
+    vector<int_t> columns;
+    columns.reserve(spm1.values().size() + spm2.values().size());
+    vector<T> vals;
+    vals.reserve(spm1.values().size() + spm2.values().size());
     for (size_t i = 0; i < nrows; ++i){
         bool first_rinclusion = true;
-        uint32_t beg1 = spm1.row_start()[i];
-        uint32_t end1 = spm1.row_end()[i];
-        uint32_t beg2 = spm2.row_start()[i];
-        uint32_t end2 = spm2.row_end()[i];
+        int_t beg1 = spm1.row_start()[i];
+        int_t end1 = spm1.row_end()[i];
+        int_t beg2 = spm2.row_start()[i];
+        int_t end2 = spm2.row_end()[i];
 
-        uint32_t col1 = std::numeric_limits<uint32_t>::max();
-        uint32_t col2 = std::numeric_limits<uint32_t>::max();
+        int_t col1 = std::numeric_limits<int_t>::max();
+        int_t col2 = std::numeric_limits<int_t>::max();
 
         while (beg1 < end1 || beg2 < end2){
 
-            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<uint32_t>::max();
-            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<uint32_t>::max();
+            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<int_t>::max();
+            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<int_t>::max();
 
             if (col1 < col2){
                 T val1 = spm1.values()[beg1];
@@ -1842,25 +1686,25 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator-(const Matrix<T,2,MATRIX_TYPE::CSR>
     if (spm1.values().size() == 0 ) return spm2;
     if (spm2.values().size() == 0) return spm1;
 
-    std::vector<uint32_t> rowStart(nrows);
-    std::vector<uint32_t> rowEnd(nrows);
-    std::vector<uint32_t> columns;
-    std::vector<T> vals;
+    vector<int_t> rowStart(nrows);
+    vector<int_t> rowEnd(nrows);
+    vector<int_t> columns;
+    vector<T> vals;
 
     for (size_t i = 0; i < nrows; ++i){
         bool first_rinclusion = true;
-        uint32_t beg1 = spm1.row_start()[i];
-        uint32_t end1 = spm1.row_end()[i];
-        uint32_t beg2 = spm2.row_start()[i];
-        uint32_t end2 = spm2.row_end()[i];
+        int_t beg1 = spm1.row_start()[i];
+        int_t end1 = spm1.row_end()[i];
+        int_t beg2 = spm2.row_start()[i];
+        int_t end2 = spm2.row_end()[i];
 
-        uint32_t col1 = std::numeric_limits<uint32_t>::max();
-        uint32_t col2 = std::numeric_limits<uint32_t>::max();
+        int_t col1 = std::numeric_limits<int_t>::max();
+        int_t col2 = std::numeric_limits<int_t>::max();
 
         while (beg1 < end1 || beg2 < end2){
 
-            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<uint32_t>::max();
-            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<uint32_t>::max();
+            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<int_t>::max();
+            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<int_t>::max();
 
             if (col1 < col2){
                 T val1 = spm1.values()[beg1];
@@ -1874,8 +1718,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator-(const Matrix<T,2,MATRIX_TYPE::CSR>
                 continue;
             }
             if (col1 > col2){
-                T val2 = -spm2.values()[beg2];
-                vals.push_back(val2);
+                T val2 = spm2.values()[beg2];
+                vals.push_back(-val2);
                 columns.push_back(col2);
                 ++beg2; //beg2 pasa al nuevo valor
                 if (first_rinclusion){
@@ -1902,7 +1746,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator-(const Matrix<T,2,MATRIX_TYPE::CSR>
             rowStart[i] = vals.size();
             rowEnd[i] = vals.size();
         }else{
-            rowEnd[i] = vals.size();}
+            rowEnd[i] = vals.size();
+        }
     }
 
     return Matrix<T,2,MATRIX_TYPE::CSR>(nrows,ncols,rowStart,rowEnd,columns,vals);
@@ -1910,7 +1755,205 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator-(const Matrix<T,2,MATRIX_TYPE::CSR>
 }
 
 /******************************************************************************/
+template<typename T>
+inline Matrix<T,2,MATRIX_TYPE::CSR3> operator+(const Matrix<T,2,MATRIX_TYPE::CSR3> &spm1,
+                                                 const Matrix<T,2,MATRIX_TYPE::CSR3> &spm2){
+    size_t nrows = spm1.rows();
+    size_t ncols = spm1.cols();
+    assert(nrows == spm2.rows() && ncols == spm2.cols());
+
+    if (spm1.values().size() == 0 && spm2.values().size() == 0) return spm1;
+    if (spm1.values().size() == 0 ) return spm2;
+    if (spm2.values().size() == 0) return spm1;
+
+    vector<int_t> rowIndex(nrows+1);
+    vector<int_t> columns;
+    columns.reserve(spm1.values().size() + spm2.values().size());
+    vector<T> vals;
+    vals.reserve(spm1.values().size() + spm2.values().size());
+    for (size_t i = 0; i < nrows; ++i){
+        bool first_rinclusion = true;
+        int_t beg1 = spm1.rowIndex()[i];
+        int_t end1 = spm1.rowIndex()[i+1];
+        int_t beg2 = spm2.rowIndex()[i];
+        int_t end2 = spm2.rowIndex()[i+1];
+
+        int_t col1 = std::numeric_limits<int_t>::max();
+        int_t col2 = std::numeric_limits<int_t>::max();
+
+        while (beg1 < end1 || beg2 < end2){
+
+            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<int_t>::max();
+            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<int_t>::max();
+
+            if (col1 < col2){
+                T val1 = spm1.values()[beg1];
+                vals.push_back(val1);
+                columns.push_back(col1);
+                ++beg1;
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+            if (col1 > col2){
+                T val2 = spm2.values()[beg2];
+                vals.push_back(val2);
+                columns.push_back(col2);
+                ++beg2; //beg2 pasa al nuevo valor
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+            if (col1 == col2){
+                T val1 = spm1.values()[beg1];
+                T val2 = spm2.values()[beg2];
+                vals.push_back(val1+val2);
+                columns.push_back(col1);
+                ++beg1;
+                ++beg2;
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+        }
+        if (first_rinclusion){ //full zeros row
+            rowIndex[i] = vals.size();
+            //rowIndex[i+1] = vals.size();
+        }else{
+            //rowIndex[i+1] = vals.size();}
+        }
+        rowIndex[nrows] = vals.size();
+    }
+
+    return Matrix<T,2,MATRIX_TYPE::CSR3>(nrows,ncols,rowIndex,columns,vals);
+
+}
+template<typename T>
+inline Matrix<T,2,MATRIX_TYPE::CSR3> operator-(const Matrix<T,2,MATRIX_TYPE::CSR3> &spm1,
+                                                 const Matrix<T,2,MATRIX_TYPE::CSR3> &spm2){
+    size_t nrows = spm1.rows();
+    size_t ncols = spm1.cols();
+    assert(nrows == spm2.rows() && ncols == spm2.cols());
+
+    if (spm1.values().size() == 0 && spm2.values().size() == 0) return spm1;
+    if (spm1.values().size() == 0 ) return spm2;
+    if (spm2.values().size() == 0) return spm1;
+
+    vector<int_t> rowIndex(nrows+1);
+    vector<int_t> columns;
+    columns.reserve(spm1.values().size() + spm2.values().size());
+    vector<T> vals;
+    vals.reserve(spm1.values().size() + spm2.values().size());
+    for (size_t i = 0; i < nrows; ++i){
+        bool first_rinclusion = true;
+        int_t beg1 = spm1.rowIndex()[i];
+        int_t end1 = spm1.rowIndex()[i+1];
+        int_t beg2 = spm2.rowIndex()[i];
+        int_t end2 = spm2.rowIndex()[i+1];
+
+        int_t col1 = std::numeric_limits<int_t>::max();
+        int_t col2 = std::numeric_limits<int_t>::max();
+
+        while (beg1 < end1 || beg2 < end2){
+
+            if (beg1 < end1) col1 = spm1.columns()[beg1]; else col1 = std::numeric_limits<int_t>::max();
+            if (beg2 < end2) col2 = spm2.columns()[beg2]; else col2 = std::numeric_limits<int_t>::max();
+
+            if (col1 < col2){
+                T val1 = spm1.values()[beg1];
+                vals.push_back(val1);
+                columns.push_back(col1);
+                ++beg1;
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+            if (col1 > col2){
+                T val2 = spm2.values()[beg2];
+                vals.push_back(-val2);
+                columns.push_back(col2);
+                ++beg2; //beg2 pasa al nuevo valor
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+            if (col1 == col2){
+                T val1 = spm1.values()[beg1];
+                T val2 = spm2.values()[beg2];
+                vals.push_back(val1-val2);
+                columns.push_back(col1);
+                ++beg1;
+                ++beg2;
+                if (first_rinclusion){
+                    rowIndex[i] = vals.size()-1;
+                    first_rinclusion = false;
+                }
+                continue;
+            }
+        }
+        if (first_rinclusion){ //full zeros row
+            rowIndex[i] = vals.size();
+            //rowIndex[i+1] = vals.size();
+        }else{
+            //rowIndex[i+1] = vals.size();}
+        }
+    }
+    rowIndex[nrows] = vals.size();
+
+    return Matrix<T,2,MATRIX_TYPE::CSR3>(nrows,ncols,rowIndex,columns,vals);
+
+}
 /*****************************Matrix Multiplication********************************/
+template<typename T>
+inline T operator*(const Matrix<T,1> &v1,const Matrix<T,1> &v2){
+    assert(v1.size() == v2.size());
+    return std::inner_product(v1.begin(),v1.end(),v2.begin(),T());
+}
+template<typename T>
+inline Matrix<T,2> dyadic_product(const Matrix<T,1> &a,const Matrix<T,1> &b){
+    Matrix<T,2> res(a.size(),b.size());
+    for (size_t i = 0; i < a.size(); ++i){
+        T a_val = a(i);
+        for (size_t j = 0; j < b.size(); ++j){
+            res(i,j) = a_val*b(j);
+        }
+    }
+    return res;
+}
+template<typename T>
+inline Matrix<T,1> operator*(const Matrix<T,2> &m,const Matrix<T,1> &v){
+    assert(m.cols() == v.size());
+    Matrix<T,1> r(m.rows());
+
+    for (size_t i = 0; i < r.size(); ++i){
+        Matrix_Ref<const T,1> mref = m.row(i);
+        r(i) = std::inner_product(mref.data(),mref.data()+mref.size(),v.begin(),0.0);
+    }
+    return r;
+}
+template<typename T>
+inline Matrix<T,1> operator*(const Matrix<T,1> &v,const Matrix<T,2> &m){
+    assert(m.rows() == v.size());
+    Matrix<T,1> r(m.cols(),T());
+
+    for (size_t i = 0; i < v.size(); ++i){
+        T val = v(i);
+        for (size_t j = 0; j < r.size(); ++j){
+            r(j) += val*m(i,j);
+        }
+    }
+    return r;
+}
 inline Matrix<double,2> operator*(const Matrix<double,2> &m1,const Matrix<double,2> &m2){
     size_t m1_rows = m1.rows();
     size_t m1_cols = m1.cols();

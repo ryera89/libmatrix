@@ -15,15 +15,26 @@ int main(){
 //                          {9,10,11,12}};
 
 
-    Matrix<double,2> M1 = {{1,2,3,4},
-                           {2,5,6,7},
-                           {3,6,8,9},
-                           {4,7,9,10}};
+Matrix<double,3> M3D(4,4,4);
+M3D= 5;
 
-    Matrix<double,2> M2 = {{0,0,0,0},
-                           {3,0,0,3},
-                           {3,3,0,0},
-                           {3,0,3,0}};
+Matrix<double,3> M3D1 = M3D.apply(std::cos);
+//Matrix<double,3> M3D1 = 3
+//M3D= 5;
+
+//cout << M3D1.extent(0) << " " << M3D1.extent(1) << " " << M3D1.extent(2) << " ";// << M3D1(0,0,0) << " " << M3D1(0,0,0) << "\n";
+
+for (int i = 0; i < 4; ++i) cout << "cos(" << M3D(i,i,i) << ") = " << M3D1(i,i,i) << "\n";
+
+Matrix<double,2> M1 = {{1,2,3,4},
+                        {2,5,6,7},
+                        {3,6,8,9},
+                        {4,7,9,10}};
+
+Matrix<double,2> M2 = {{0,0,0,0},
+                        {3,0,0,3},
+                        {3,3,0,0},
+                        {3,0,3,0}};
 
     Matrix<double,2> M3 = M1 + M2 + M1;
 
