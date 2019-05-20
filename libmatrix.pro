@@ -27,13 +27,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ndimmatrix/matrix.cpp \
-    main.cpp
+    main.cpp \
+    ndimmatrix/ndmatrix.cpp
 
 HEADERS += \
     ndimmatrix/matrix.h \
     ndimmatrix/matrix_impl.h \
     ndimmatrix/matrix_ref.h \
-    ndimmatrix/matrix_slice.h
+    ndimmatrix/matrix_slice.h \
+    ndimmatrix/ndmatrix.h
 
 unix {
     target.path = /usr/lib

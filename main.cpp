@@ -1,5 +1,5 @@
 #include <iostream>
-#include "ndimmatrix/matrix.h"
+#include "ndimmatrix/ndmatrix.h"
 #include "mkl.h"
 #include <chrono>
 
@@ -15,150 +15,150 @@ int main(){
 //                          {9,10,11,12}};
 
 
-Matrix<double,3> M3D(4,4,4);
-M3D= 5;
-
-Matrix<double,3> M3D1 = M3D.apply(std::cos);
-//Matrix<double,3> M3D1 = 3
+//Matrix<double,3> M3D(4,4,4);
 //M3D= 5;
 
-//cout << M3D1.extent(0) << " " << M3D1.extent(1) << " " << M3D1.extent(2) << " ";// << M3D1(0,0,0) << " " << M3D1(0,0,0) << "\n";
+//Matrix<double,3> M3D1 = M3D.apply(std::cos);
+////Matrix<double,3> M3D1 = 3
+////M3D= 5;
 
-for (int i = 0; i < 4; ++i) cout << "cos(" << M3D(i,i,i) << ") = " << M3D1(i,i,i) << "\n";
+////cout << M3D1.extent(0) << " " << M3D1.extent(1) << " " << M3D1.extent(2) << " ";// << M3D1(0,0,0) << " " << M3D1(0,0,0) << "\n";
 
-Matrix<double,2> M1 = {{1,2,3,4},
-                        {2,5,6,7},
-                        {3,6,8,9},
-                        {4,7,9,10}};
+//for (int i = 0; i < 4; ++i) cout << "cos(" << M3D(i,i,i) << ") = " << M3D1(i,i,i) << "\n";
 
-Matrix<double,2> M2 = {{0,0,0,0},
-                        {3,0,0,3},
-                        {3,3,0,0},
-                        {3,0,3,0}};
+//Matrix<double,2> M1 = {{1,2,3,4},
+//                        {2,5,6,7},
+//                        {3,6,8,9},
+//                        {4,7,9,10}};
 
-    Matrix<double,2> M3 = M1 + M2 + M1;
+//Matrix<double,2> M2 = {{0,0,0,0},
+//                        {3,0,0,3},
+//                        {3,3,0,0},
+//                        {3,0,3,0}};
 
-    cout << setprecision(3) << M3 << endl;
+//    Matrix<double,2> M3 = M1 + M2 + M1;
 
-    int val(3);
+//    cout << setprecision(3) << M3 << endl;
 
-    M3*=val;
+//    int val(3);
 
-    cout << setprecision(3) << M3 << endl;
+//    M3*=val;
 
-    Matrix<double,2> M4 = M1*M2;
+//    cout << setprecision(3) << M3 << endl;
 
-    Matrix<complexd,2> CM(4,4,complexd(1,2));
+//    Matrix<double,2> M4 = M1*M2;
 
-    Matrix<complexd,2> CM1 = CM+M1;
-    Matrix<complexd,2> CM2 = CM-M1;
-    Matrix<complexd,2> CM3 = M1+CM;
-    Matrix<complexd,2> CM4 = M1-CM;
+//    Matrix<complexd,2> CM(4,4,complexd(1,2));
 
-    cout << setprecision(3) << CM1 << endl;
-    cout << setprecision(3) << CM2 << endl;
-    cout << setprecision(3) << CM3 << endl;
-    cout << setprecision(3) << CM4 << endl;
+//    Matrix<complexd,2> CM1 = CM+M1;
+//    Matrix<complexd,2> CM2 = CM-M1;
+//    Matrix<complexd,2> CM3 = M1+CM;
+//    Matrix<complexd,2> CM4 = M1-CM;
 
-    cout << 1.0-complexd(1,2) << endl;
+//    cout << setprecision(3) << CM1 << endl;
+//    cout << setprecision(3) << CM2 << endl;
+//    cout << setprecision(3) << CM3 << endl;
+//    cout << setprecision(3) << CM4 << endl;
 
-    Matrix<int,2> MI1 = {{1,2,3,4},
-                            {2,5,6,7},
-                            {3,6,8,9},
-                            {4,7,9,10}};
+//    cout << 1.0-complexd(1,2) << endl;
 
-    cout << (M1+=MI1) << endl;
+//    Matrix<int,2> MI1 = {{1,2,3,4},
+//                            {2,5,6,7},
+//                            {3,6,8,9},
+//                            {4,7,9,10}};
 
-    cout << setprecision(3) << M4 << endl;
+//    cout << (M1+=MI1) << endl;
 
-    Matrix<double,2,MATRIX_TYPE::SYMM> SM1(M1);
+//    cout << setprecision(3) << M4 << endl;
 
-    cout << SM1 << endl;
-    valarray<uint32_t> indx1 = {0,1,2};
-    Matrix<double,2> indM1 = SM1(indx1,indx1);
-    if (indM1.matrix_type == MATRIX_TYPE::GEN) cout << "GEN" << endl;
+//    Matrix<double,2,MATRIX_TYPE::SYMM> SM1(M1);
 
-    cout << indM1 << endl;
+//    cout << SM1 << endl;
+//    valarray<uint32_t> indx1 = {0,1,2};
+//    Matrix<double,2> indM1 = SM1(indx1,indx1);
+//    if (indM1.matrix_type == MATRIX_TYPE::GEN) cout << "GEN" << endl;
 
-    cout << setprecision(3) << M1 << endl;
+//    cout << indM1 << endl;
 
-    cout << setprecision(3) << SM1 << endl;
+//    cout << setprecision(3) << M1 << endl;
 
-    cout << setprecision(3) << (SM1+=M1) << endl;
-    cout << setprecision(3) << (SM1+=SM1) << endl;
+//    cout << setprecision(3) << SM1 << endl;
 
-    cout << setprecision(3) << SM1 << endl;
+//    cout << setprecision(3) << (SM1+=M1) << endl;
+//    cout << setprecision(3) << (SM1+=SM1) << endl;
 
-
-    Matrix<std::complex<double>,2,MATRIX_TYPE::HER> HM1(4);
-    for (size_t i = 0; i < HM1.rows(); ++i){
-        for (size_t j = i; j < HM1.cols(); ++j){
-            HM1(i,j) = std::complex<double>(j,i+j);
-        }
-    }
-    cout << setprecision(3) << HM1 << endl;
-    cout << (HM1+=HM1) << endl;
-    cout << (HM1+=SM1) << endl;
-
-    HM1 += 10;
-
-    cout << setprecision(3) << HM1 << endl;
+//    cout << setprecision(3) << SM1 << endl;
 
 
-    HM1*=10;
+//    Matrix<std::complex<double>,2,MATRIX_TYPE::HER> HM1(4);
+//    for (size_t i = 0; i < HM1.rows(); ++i){
+//        for (size_t j = i; j < HM1.cols(); ++j){
+//            HM1(i,j) = std::complex<double>(j,i+j);
+//        }
+//    }
+//    cout << setprecision(3) << HM1 << endl;
+//    cout << (HM1+=HM1) << endl;
+//    cout << (HM1+=SM1) << endl;
 
-    cout << setprecision(3) << HM1 << endl;
+//    HM1 += 10;
 
-    Matrix<double,2,MATRIX_TYPE::CSR> SpM1(M2);
-
-    cout << M2 << endl;
-
-    cout << SpM1 << endl;
-    SpM1.printData();
-
-    Matrix<double,2,MATRIX_TYPE::CSR3> SpM2(M2);
-
-    cout << SpM2 << endl;
-    SpM2.printData();
-
-    vector<uint32_t> iindx = {1,2,3,0};
-    vector<uint32_t> jindx = {0,1,2,3};
-
-    Matrix<double,2,MATRIX_TYPE::CSR> SpM11 = SpM1(iindx,jindx);
-
-    Matrix<double,2,MATRIX_TYPE::CSR3> SpM22 = SpM2(iindx,jindx);
-
-    cout << "new data here" << endl;
-
-    SpM11.printData();
-    SpM22.printData();
-
-    cout << SpM11 << endl;
-    cout << SpM22 << endl;
-
-    Matrix<complexd,2> CM5 = {{complexd(0,0),complexd(0,1),complexd(0,0),complexd(1,2)},
-                             {complexd(1,0),complexd(0,0),complexd(1,2),complexd(0,0)},
-                             {complexd(2,0),complexd(2,1),complexd(2,2),complexd(2,3)}};
-
-    cout << CM5 << endl;
-    Matrix<complexd,2,MATRIX_TYPE::CSR> SCM1(CM5);
-    Matrix<complexd,2,MATRIX_TYPE::CSR3> SCM2(CM5);
-
-    cout << SCM1 << endl;
-    cout << SCM2 << endl;
-
-    SCM1.printData();
-    SCM2.printData();
-
-    cout << SpM11 << endl;
-    cout << SpM1 << endl;
+//    cout << setprecision(3) << HM1 << endl;
 
 
-    Matrix<double,2,MATRIX_TYPE::CSR> SpM3 = SpM11 - SpM1;
+//    HM1*=10;
 
-    cout <<  SpM3 <<  endl;
+//    cout << setprecision(3) << HM1 << endl;
 
-    SpM3.printData();
+//    Matrix<double,2,MATRIX_TYPE::CSR> SpM1(M2);
+
+//    cout << M2 << endl;
+
+//    cout << SpM1 << endl;
+//    SpM1.printData();
+
+//    Matrix<double,2,MATRIX_TYPE::CSR3> SpM2(M2);
+
+//    cout << SpM2 << endl;
+//    SpM2.printData();
+
+//    vector<uint32_t> iindx = {1,2,3,0};
+//    vector<uint32_t> jindx = {0,1,2,3};
+
+//    Matrix<double,2,MATRIX_TYPE::CSR> SpM11 = SpM1(iindx,jindx);
+
+//    Matrix<double,2,MATRIX_TYPE::CSR3> SpM22 = SpM2(iindx,jindx);
+
+//    cout << "new data here" << endl;
+
+//    SpM11.printData();
+//    SpM22.printData();
+
+//    cout << SpM11 << endl;
+//    cout << SpM22 << endl;
+
+//    Matrix<complexd,2> CM5 = {{complexd(0,0),complexd(0,1),complexd(0,0),complexd(1,2)},
+//                             {complexd(1,0),complexd(0,0),complexd(1,2),complexd(0,0)},
+//                             {complexd(2,0),complexd(2,1),complexd(2,2),complexd(2,3)}};
+
+//    cout << CM5 << endl;
+//    Matrix<complexd,2,MATRIX_TYPE::CSR> SCM1(CM5);
+//    Matrix<complexd,2,MATRIX_TYPE::CSR3> SCM2(CM5);
+
+//    cout << SCM1 << endl;
+//    cout << SCM2 << endl;
+
+//    SCM1.printData();
+//    SCM2.printData();
+
+//    cout << SpM11 << endl;
+//    cout << SpM1 << endl;
+
+
+//    Matrix<double,2,MATRIX_TYPE::CSR> SpM3 = SpM11 - SpM1;
+
+//    cout <<  SpM3 <<  endl;
+
+//    SpM3.printData();
 
     //SM.printData();
 
@@ -279,8 +279,21 @@ Matrix<double,2> M2 = {{0,0,0,0},
 //        cin >> answer;
 //    }
 
+Matrix<double,2> M = {{2,4,6,8},
+                      {1,3,5,7}};
 
-    cout << "Hello World...!!!" << endl;
+Matrix<double,2> R = M(slice(0,2,1),slice(0,3,1));
+
+M += M;
+Matrix<double,2> T = R;
+R -= T;
+cout << M << "\n";
+cout << R << endl;
+
+T*=30;
+cout << T << endl;
+T/=15;
+cout << T << endl;
 
     return 0;
 }
