@@ -1,5 +1,6 @@
 #include <iostream>
 #include "ndimmatrix/ndmatrix.h"
+#include "ndimmatrix/sym_matrix.h"
 #include "mkl.h"
 #include <chrono>
 
@@ -279,14 +280,42 @@ int main(){
 //        cin >> answer;
 //    }
 
-Matrix<double,2> M = {{2,4,6,8},
+Matrix<double,2,MATRIX_TYPE::SYMM> SM1(4);
+Matrix<double,2,MATRIX_TYPE::SYMM> SM2(4);
+
+for (int i = 0; i < SM1.rows(); ++i)
+    for (int j = i; j < SM1.cols(); ++j){
+        SM1(i,j) = i*i;
+        SM2(i,j) = i+j;
+    }
+
+cout << SM1+SM2 << endl;
+cout << SM2-SM1 << endl;
+
+Matrix<complex<double>,1,MATRIX_TYPE::GEN> cvec = {complex<double>(1,2),complex<double>(2,2)};
+cout << "norma de vector complejo = " << cvec.norm2() << endl;
+cout << "norma cuadrada de vector complejo = " << cvec.norm2sqr() << endl;
+
+Matrix<double,1,MATRIX_TYPE::GEN> rvec = {1,2};
+
+Matrix<complex<double>,1> cvecres = -cvec-rvec;
+
+
+
+cout << cvecres << endl;
+
+
+Matrix<double,2,MATRIX_TYPE::GEN> M = {{2,4,6,8},
                       {1,3,5,7}};
 
-Matrix<double,2> R = M(slice(0,2,1),slice(0,3,1));
+Matrix<double,2,MATRIX_TYPE::GEN> R = M(0,slice(0,3,1));
+
+
+cout << R << endl;
 
 M += M;
-Matrix<double,2> T = R;
-R -= T;
+Matrix<double,2,MATRIX_TYPE::GEN> T = R;
+M = R - T;
 cout << M << "\n";
 cout << R << endl;
 
@@ -294,6 +323,32 @@ T*=30;
 cout << T << endl;
 T/=15;
 cout << T << endl;
+
+Matrix<double,1,MATRIX_TYPE::GEN> vec1 = M.row(0);
+
+cout << vec1 << "\n";
+
+Matrix<double,1,MATRIX_TYPE::GEN> v3 = {4,5,6,7};
+
+cout << v3 << endl;
+
+v3 = {1,2,3,4,5,6,7,8,9};
+
+cout << v3 <<  endl;
+
+v3 = -vec1;
+
+cout << v3 << endl;
+
+//cout << "Norma M = " << M.norm2() << " ---" << "vector v = " << v3.norm2() << endl;
+
+
+v3 = vec1 + 4;
+cout << v3 << endl;
+
+v3 = v3 - vec1;
+cout << v3 << endl;
+
 
     return 0;
 }

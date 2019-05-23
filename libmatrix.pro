@@ -35,7 +35,8 @@ HEADERS += \
     ndimmatrix/matrix_impl.h \
     ndimmatrix/matrix_ref.h \
     ndimmatrix/matrix_slice.h \
-    ndimmatrix/ndmatrix.h
+    ndimmatrix/ndmatrix.h \
+    ndimmatrix/sym_matrix.h
 
 unix {
     target.path = /usr/lib

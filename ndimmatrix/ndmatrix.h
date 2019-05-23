@@ -23,11 +23,11 @@ enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
 
 template<typename T,size_t N,MATRIX_TYPE type = MATRIX_TYPE::GEN,
           typename = typename std::enable_if_t<((std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
-                                                 || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long int>>)
+                                                 || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>)
                                                     && N > 2 && type == MATRIX_TYPE::GEN)
                                                || (std::is_arithmetic_v<T> && (type != MATRIX_TYPE::HER) && N == 2)
                                                || ((std::is_same_v<T,std::complex<double>>
-                                                    || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long int>>)
+                                                    || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>)
                                                    && N == 2) || (N == 1 && (type == MATRIX_TYPE::GEN)) >>
 class Matrix{
 private:
@@ -102,8 +102,21 @@ public:
     auto end() const{return std::cend(m_elems);}
 
     //Matrix apply(T (func)(T)){Matrix r(m_desc.m_extents); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix apply(T (func)(T)) const{Matrix r(*this); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
+    Matrix apply(T (func)(T)) const{
+        Matrix r;
+        r.m_desc = m_desc;
+        r.m_elems = m_elems.apply(func);
+        //std::transform(begin(),end(),r.begin(),func);
+        return r;
+    }
+    Matrix apply(T (func)(const T&)) const{
+        Matrix r;
+        r.m_desc = m_desc;
+        r.m_elems = m_elems.apply(func);
+        //std::transform(begin(),end(),r.begin(),func);
+        return r;
+    }
+    //Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
 
     Matrix_Ref<T,N-1> row(size_t i){
         Matrix_Slice<N-1> row;
@@ -155,8 +168,10 @@ public:
     //Unary minus
     Matrix operator-() const
     {
-        Matrix res(*this);
-        std::for_each(res.begin(),res.end(),[](T &val){val = -val;});
+        Matrix res;
+        res.m_desc = m_desc;
+        res.m_elems = -m_elems;
+        //std::for_each(res.begin(),res.end(),[](T &val){val = -val;});
         return res;
     }
     //Arithmetic operations.
@@ -189,7 +204,7 @@ public:
         Matrix_Slice<N> mdesc = m.descriptor();
         assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
                           mdesc.m_extents.begin(),mdesc().m_extents.end()));
-        m_elems+=m.values();
+        m_elems+=m.m_elems;
         return *this;
     }
     Matrix& operator-=(const Matrix<T,N> &m)
@@ -197,7 +212,7 @@ public:
         Matrix_Slice<N> mdesc = m.descriptor();
         assert(std::equal(m_desc.m_extents.begin(),m_desc.m_extents.end(),
                           mdesc.m_extents.begin(),mdesc().m_extents.end()));
-        m_elems-=m.values();
+        m_elems-=m.m_elems;
         return *this;
     }
     template<typename U>
@@ -284,7 +299,7 @@ public:
     template<typename U>
     Matrix& operator=(std::initializer_list<U>) = delete;
     Matrix& operator =(T val){m_elems = val; return *this;}
-    const Matrix_Slice<2>& descriptor() const noexcept{
+    Matrix_Slice<2> descriptor() const noexcept{
         return m_desc;
     }
     size_t size() const noexcept {return m_desc.m_size;}
@@ -300,9 +315,22 @@ public:
     auto end() const{return std::cend(m_elems);}
     const valarray<T>& values() const{return m_elems;}
 
-    Matrix apply(T (func)(T val)){Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix apply(T (func)(const T&)) const{Matrix r(rows(),cols()); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
+    Matrix apply(T (func)(T val)){
+        Matrix r;
+        r.m_desc = m_desc;
+        r.m_elems = m_elems.apply(func);
+        //std::transform(begin(),end(),r.begin(),func);
+        return r;
+    }
+    Matrix apply(T (func)(const T&)) const{
+        Matrix r;
+        r.m_desc = m_desc;
+        r.m_elems = m_elems.apply(func);
+        //std::transform(begin(),end(),r.begin(),func);
+        return r;
+    }
+
+    //Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
 
     Matrix_Ref<T,1> row(size_t i){
         assert(i < rows());
@@ -385,8 +413,10 @@ public:
     }
     //unary minus
     Matrix operator-() const{
-        Matrix r(rows(),cols());
-        std::transform(this->begin(),this->end(),r.begin(),[](const T &val){return -val;});
+        Matrix r;//(rows(),cols());
+        r.m_desc = m_desc;
+        r.m_elems = -m_elems;
+        //std::transform(this->begin(),this->end(),r.begin(),[](const T &val){return -val;});
         return r;
     }
     template<typename Scalar>
@@ -412,13 +442,13 @@ public:
     Matrix& operator+=(const Matrix<T,2> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems+=m.values();
+        m_elems+=m.m_elems;
         return *this;
     }
     Matrix& operator-=(const Matrix<T,2> &m)
     {
         assert(rows() == m.rows() && cols() == m.cols());
-        m_elems-=m.values();
+        m_elems-=m.m_elems;
         return *this;
     }
     template<typename U>
@@ -437,6 +467,238 @@ public:
                        [](const auto &val1,const auto &val2){return val1-val2;});
         return *this;
     }
+    std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
+                         || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,double>
+    norm2() const{
+        if constexpr (std::is_arithmetic_v<T>){
+            double res = std::inner_product(begin(),end(),begin(),0.0);
+            return std::sqrt(res);
+        }else{
+            double res = std::accumulate(begin(),end(),0.0,[](double init,T val)->double{return std::move(init) + norm(val);});
+            return std::sqrt(res);
+        }
+
+    }
+    std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
+                         || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,double>
+    norm2sqr() const{
+        if constexpr (std::is_arithmetic_v<T>){
+            return std::inner_product(begin(),end(),begin(),0.0);
+            //return std::sqrt(res);
+        }else{
+            return std::accumulate(begin(),end(),0.0,[](double init,T val)->double{return std::move(init) + norm(val);});
+            //return std::sqrt(res);
+        }
+
+    }
+};
+template<typename T>
+class Matrix<T,1,MATRIX_TYPE::GEN>{
+    Matrix_Slice<1> m_desc;
+    std::valarray<T> m_elems;
+public:
+    static constexpr size_t order = 1;
+    static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::GEN;
+    using value_type = T;
+
+    //Default constructor and destructor
+    Matrix() = default;
+    ~Matrix() = default;
+
+    //Move constructor and assignment
+    Matrix(Matrix&&) = default;
+    Matrix& operator=(Matrix&&) = default;
+
+    //Copy constructor and assignment
+    Matrix(const Matrix&) = default;
+    Matrix& operator=(const Matrix&) = default;
+
+    Matrix(size_t ext):m_desc(0,ext),m_elems(ext){}
+    //Matrix(const std::array<size_t,1> &exts):m_desc{0,exts},m_elems(m_desc.m_size){}
+
+    template<typename U>
+    Matrix(const Matrix_Ref<U,1> &ref):m_desc(0,ref.descriptor().m_extents[0]),
+                                                       m_elems(m_desc.m_size)
+    {
+        static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+        for (size_t i = 0; i < m_desc.m_extents[0]; ++i) m_elems[i] = ref(i);
+    }
+    template<typename U>
+    Matrix& operator = (const Matrix_Ref<T,1> &ref){
+        static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
+        m_desc.m_start = 0;
+        m_desc.m_extents = ref.descriptor().m_extents;
+        m_desc.init();
+        m_elems.resize(m_desc.m_size);
+        for (size_t i = 0; i < m_desc.m_extents[0]; ++i) m_elems[i] = ref(i);
+        return *this;
+    }
+    Matrix& operator=(const T &val){
+        //std::for_each(begin(),end(),[&val](T &elem){elem = val;});
+        m_elems = val;
+        return *this;
+    }
+    Matrix(std::initializer_list<T> list):m_elems(list){
+        m_desc.m_start = 0;
+        m_desc.m_size = m_elems.size();
+        m_desc.m_extents[0] = m_elems.size();
+        m_desc.m_strides[0] = 1;
+    }
+    Matrix& operator=(std::initializer_list<T> list){
+        m_elems = list;
+        m_desc.m_start = 0;
+        m_desc.m_size = m_elems.size();
+        m_desc.m_extents[0] = m_elems.size();
+        m_desc.m_strides[0] = 1;
+        return *this;
+    }
+
+    size_t size() const noexcept{return m_elems.size();}
+
+    //std::valarray<T>& values() {return m_elems;}
+    const std::valarray<T>& values() const{return m_elems;}
+
+    Matrix_Slice<1> descriptor() const noexcept{
+        return m_desc;
+    }
+
+    auto begin(){return std::begin(m_elems);}
+    auto begin() const{return std::cbegin(m_elems);}
+    auto end(){return std::end(m_elems);}
+    auto end() const{return std::cend(m_elems);}
+
+    //Arithmetic ops
+    Matrix apply(T (func)(T val)){
+        Matrix r;
+        r.m_desc = m_desc;
+        //std::transform(begin(),end(),r.begin(),func);
+        r.m_elems = m_elems.apply(func);
+        return r;
+    }
+    Matrix apply(T (func)(const T&)) const{
+        Matrix r;
+        r.m_desc = m_desc;
+        //std::transform(begin(),end(),r.begin(),func);
+        r.m_elems = m_elems.apply(func);
+        return r;
+    }
+    //Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
+
+    //Unary minus
+    Matrix operator-() const{
+        Matrix res(this->size());
+        //std::transform(this->begin(),this->end(),res.begin(),[](const T &elem){return -elem;});
+        res.m_elems = -m_elems;
+        return res;
+    }
+
+    //Arithmetic operations.
+    template<typename Scalar>
+    Matrix& operator+=(const Scalar& val)
+    {
+        m_elems+=val;
+        return *this;
+    }
+    template<typename Scalar>
+    Matrix& operator-=(const Scalar& val)
+    {
+        m_elems-=val;
+        return *this;
+    }
+    template<typename Scalar>
+    Matrix& operator*=(const Scalar& val)
+    {
+        m_elems*=val;
+        return *this;
+    }
+    template<typename Scalar>
+    Matrix& operator/=(const Scalar& val)
+    {
+        m_elems/=val;
+        return *this;
+    }
+    Matrix& operator+=(const Matrix &m)
+    {
+        assert(this->size() == m.size());
+        m_elems+=m.m_elems;
+        return *this;
+    }
+    Matrix& operator-=(const Matrix &m)
+    {
+        assert(this->size() == m.size());
+        m_elems-=m.m_elems;
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator+=(const Matrix<U,1> &m)
+    {
+        assert(this->size() == m.size());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1+val2;});
+        return *this;
+    }
+    template<typename U>
+    std::enable_if_t<std::is_convertible_v<U,T>,Matrix&> operator-=(const Matrix<U,1> &m)
+    {
+        assert(this->size() == m.size());
+        std::transform(this->begin(),this->end(),m.begin(),this->begin(),
+                       [](const auto &val1,const auto &val2){return val1-val2;});
+        return *this;
+    }
+    //access functions
+    T& operator()(const size_t &i)
+    {
+        assert(i < size());
+        return m_elems[i];
+    }
+    const T& operator()(const size_t &i) const
+    {
+        assert(i < size());
+        return m_elems[i];
+    }
+    Matrix_Ref<T,1> operator()(const std::slice &s){
+        Matrix_Slice<1> d;
+        d.m_start = s.start();
+        d.m_size = s.stride();
+        d.m_extents[0] = s.size();
+        d.m_strides[0] = s.stride();
+        //d._start = matrix_impl::do_slice(_desc,d,args...);
+        return {begin(),d};
+    }
+
+    Matrix_Ref<T,1> operator()(const std::slice &s) const{
+        Matrix_Slice<1> d;
+        d.m_start = s.start();
+        d.m_size = s.stride();
+        d.m_extents[0] = s.size();
+        d.m_strides[0] = s.stride();
+        //d._start = matrix_impl::do_slice(_desc,d,args...);
+        return {begin(),d};
+    }
+    std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
+                         || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,double>
+    norm2() const{
+        if constexpr (std::is_arithmetic_v<T>){
+            double res = std::inner_product(begin(),end(),begin(),0.0);
+            return std::sqrt(res);
+        }else{
+            double res = std::accumulate(begin(),end(),0.0,[](double init,T val)->double{return std::move(init) + norm(val);});
+            return std::sqrt(res);
+        }
+
+    }
+    std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
+                         || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,double>
+    norm2sqr() const{
+        if constexpr (std::is_arithmetic_v<T>){
+            return std::inner_product(begin(),end(),begin(),0.0);
+            //return std::sqrt(res);
+        }else{
+            return std::accumulate(begin(),end(),0.0,[](double init,T val)->double{return std::move(init) + norm(val);});
+            //return std::sqrt(res);
+        }
+
+    }
 };
 
 //IO operations
@@ -453,6 +715,156 @@ std::ostream &operator << (std::ostream &os,const Matrix<T,2,mtype> &m){
     }
     os.unsetf(ff);
     return os;
+}
+template<typename T>
+inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
+    std::ios_base::fmtflags ff = std::ios::scientific;
+    ff |= std::ios::showpos;
+    os.setf(ff);
+    for (size_t i = 0; i < m.size(); ++i){
+        os  << m(i) << '\n';
+    }
+    os.unsetf(ff);
+    return os;
+}
+//Arithmetic Operation
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Scalar &val,const Matrix<T,N> &m){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator +(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R+=val;
+}
+template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
+inline std::enable_if_t<std::is_arithmetic_v<Scalar> || std::is_same_v<T,std::complex<double>>
+                        || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,
+                        Matrix<T,N,mtype>> operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
+    Matrix<T,N,mtype> R(m);
+    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+    return R;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+    return R;
+}
+template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
+inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
+    Matrix<T,N,mtype> R(m);
+    return R-=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator -(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R-=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Scalar &val,const Matrix<T,N> &m){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Scalar &val,Matrix<T,N> &&m){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator *(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R*=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator /(const Matrix<T,N> &m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R/=val;
+}
+template<typename T,typename Scalar,size_t N>
+inline Matrix<T,N> operator /(Matrix<T,N> &&m,const Scalar &val){
+    Matrix<T,N> R(m);
+    return R/=val;
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
+inline Matrix<T,N,mtype> operator +(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
+    if constexpr (std::is_same_v<RT,T>){
+        Matrix<RT,N,mtype> R(m1);
+        return R+=m2;
+    }else{
+        Matrix<RT,N> R(m2);
+        return R+=m1;
+    }
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+inline Matrix<T,N> operator +(Matrix<T,N> &&m1,const Matrix<U,N> &m2){
+    if constexpr (std::is_same_v<RT,T>){
+        Matrix<RT,N> R(m1);
+        return R+=m2;
+    }else{
+        Matrix<RT,N> R(m2);
+        return R+=m1;
+    }
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+inline Matrix<T,N> operator +(const Matrix<T,N> &m1,Matrix<U,N> &&m2){
+    if constexpr (std::is_same_v<RT,T> && !std::is_same_v<T,U>){
+        Matrix<RT,N> R(m1);
+        return R+=m2;
+    }else{
+        Matrix<RT,N> R(m2);
+        return R+=m1;
+    }
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
+inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
+    if constexpr (std::is_same_v<RT,T>){
+        Matrix<RT,N,mtype> R(m1);
+        return R-=m2;
+    }else{
+        Matrix<RT,N,mtype> R(-m2);
+        return R+=m1;
+    }
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+inline Matrix<T,N> operator -(Matrix<T,N> &&m1,const Matrix<U,N> &m2){
+    if constexpr (std::is_same_v<RT,T>){
+        Matrix<RT,N> R(m1);
+        return R-=m2;
+    }else{
+        Matrix<RT,N> R(-m2);
+        return R+=m1;
+    }
+}
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+inline Matrix<T,N> operator -(const Matrix<T,N> &m1,Matrix<U,N> &&m2){
+    assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+    if constexpr (std::is_same_v<RT,T> && !std::is_same_v<T,U>){
+        Matrix<RT,N> R(m1);
+        return R-=m2;
+    }else{
+        Matrix<RT,N> R(m2);
+        std::transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const T &v1,const T &v2){return v1-v2;});
+        return R;
+    }
 }
 
 #endif // NDMATRIX_H
