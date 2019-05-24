@@ -17,6 +17,7 @@
 
 using std::vector;
 using std::valarray;
+using namespace std;
 enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
 
 //using MATRIX_TYPE::SYMM=SYMM;
@@ -50,6 +51,7 @@ public:
     //Initialization from extents
     template<typename... Exts,typename = typename std::enable_if_t<sizeof... (Exts) == N>>
     Matrix(Exts... exts):m_desc(0,{exts...}),m_elems(m_desc.m_size){}
+    Matrix(Matrix_Slice<N> desc):m_desc(desc),m_elems(m_desc.m_size){}
 
     //    Matrix(const Matrix_Ref<T,N> &ref){
     //        //static_assert (std::is_convertible_v<U,T>,"Matrix Constructor: Incompatible elements type.");
@@ -255,8 +257,9 @@ public:
     Matrix(const Matrix&) = default;
     Matrix& operator=(const Matrix&) = default;
 
-    Matrix(size_t m,size_t n):m_desc(0,m,n),m_elems(m*n){}
-    Matrix(size_t m,size_t n,T val):m_desc(0,m,n),m_elems(val,m*n){}
+    Matrix(size_t m,size_t n):m_desc(0,m,n),m_elems(m_desc.m_size){}
+    Matrix(size_t m,size_t n,T val):m_desc(0,m,n),m_elems(val,m_desc.m_size){}
+    Matrix(Matrix_Slice<2> desc):m_desc(desc),m_elems(m_desc.m_size){}
     //Construction and assignment from nested initializars
     Matrix(Matrix_Initializer<T,2> init){
         derive_extents(m_desc.m_extents,init);
@@ -514,6 +517,7 @@ public:
     Matrix& operator=(const Matrix&) = default;
 
     Matrix(size_t ext):m_desc(0,ext),m_elems(ext){}
+    Matrix(Matrix_Slice<1> desc):m_desc(desc),m_elems(m_desc.m_size){}
     //Matrix(const std::array<size_t,1> &exts):m_desc{0,exts},m_elems(m_desc.m_size){}
 
     template<typename U>
@@ -728,80 +732,590 @@ inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
     return os;
 }
 //Arithmetic Operation
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator +(const Scalar &val,const Matrix<T,N> &m){
-    Matrix<T,N> R(m);
-    return R+=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator +(const Scalar &val,const Matrix<T,N> &m){
+//    Matrix<T,N> R(m);
+//    return R+=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Scalar &val,const Matrix<T,N,mtype> &m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val + ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val + R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val + ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator +(const Scalar &val,Matrix<T,N> &&m){
-    Matrix<T,N> R(m);
-    return R+=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator +(const Scalar &val,Matrix<T,N> &&m){
+//    Matrix<T,N> R(m);
+//    return R+=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Scalar &val,Matrix<T,N,mtype> &&m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val + ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val + R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val + ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator +(const Matrix<T,N> &m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R+=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator +(const Matrix<T,N> &m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R+=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Matrix<T,N,mtype> &m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele + val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j) + val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele + val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator +(Matrix<T,N> &&m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R+=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator +(Matrix<T,N> &&m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R+=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(Matrix<T,N,mtype> &&m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele + val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R+=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j) + val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele + val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
-inline std::enable_if_t<std::is_arithmetic_v<Scalar> || std::is_same_v<T,std::complex<double>>
-                        || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,
-                        Matrix<T,N,mtype>> operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
-    Matrix<T,N,mtype> R(m);
-    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
-    return R;
+//template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
+//inline std::enable_if_t<std::is_arithmetic_v<Scalar> || std::is_same_v<T,std::complex<double>>
+//                        || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>,
+//                        Matrix<T,N,mtype>> operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
+//    Matrix<T,N,mtype> R(m);
+//    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+//    return R;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+            return R;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val - ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+            return R;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val - R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val - ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator -(const Scalar &val,Matrix<T,N> &&m){
-    Matrix<T,N> R(m);
-    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
-    return R;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator -(const Scalar &val,Matrix<T,N> &&m){
+//    Matrix<T,N> R(m);
+//    std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+//    return R;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Scalar &val,Matrix<T,N,mtype> &&m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+            return R;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val - ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            std::for_each(R.begin(),R.end(),[&val](auto &elem){elem = val-elem;});
+            return R;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val - R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val - ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
-inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
-    Matrix<T,N,mtype> R(m);
-    return R-=val;
+//template<typename T,typename Scalar,size_t N,MATRIX_TYPE mtype>
+//inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
+//    Matrix<T,N,mtype> R(m);
+//    return R-=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R-=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele - val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R-=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j) - val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele - val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator -(Matrix<T,N> &&m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R-=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator -(Matrix<T,N> &&m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R-=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(Matrix<T,N,mtype> &&m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R-=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele - val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R-=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j) - val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele - val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator *(const Scalar &val,const Matrix<T,N> &m){
-    Matrix<T,N> R(m);
-    return R*=val;
+
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator *(const Scalar &val,const Matrix<T,N> &m){
+//    Matrix<T,N> R(m);
+//    return R*=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Scalar &val,const Matrix<T,N,mtype> &m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val*ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val*R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val*ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator *(const Scalar &val,Matrix<T,N> &&m){
-    Matrix<T,N> R(m);
-    return R*=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator *(const Scalar &val,Matrix<T,N> &&m){
+//    Matrix<T,N> R(m);
+//    return R*=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Scalar &val,Matrix<T,N,mtype> &&m){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val*ele;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = val*R(i,j);
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return val*ele;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator *(const Matrix<T,N> &m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R*=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator *(const Matrix<T,N> &m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R*=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Matrix<T,N,mtype> &m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele*val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j)*val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele*val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator *(Matrix<T,N> &&m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R*=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator *(Matrix<T,N> &&m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R*=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(Matrix<T,N,mtype> &&m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele*val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R*=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j)*val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele*val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator /(const Matrix<T,N> &m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R/=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator /(const Matrix<T,N> &m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R/=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator /(const Matrix<T,N,mtype> &m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R/=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele/val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R/=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j)/val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele/val;});
+                return R;
+            }
+        }
+    }
 }
-template<typename T,typename Scalar,size_t N>
-inline Matrix<T,N> operator /(Matrix<T,N> &&m,const Scalar &val){
-    Matrix<T,N> R(m);
-    return R/=val;
+//template<typename T,typename Scalar,size_t N>
+//inline Matrix<T,N> operator /(Matrix<T,N> &&m,const Scalar &val){
+//    Matrix<T,N> R(m);
+//    return R/=val;
+//}
+template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
+inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
+                       || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
+                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
+                                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+                                 Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator /(Matrix<T,N,mtype> &&m,const Scalar &val){
+
+    //Scalar es de tipo real (ie: double,float,int)
+    if constexpr (is_arithmetic_v<Scalar>){
+        if constexpr (is_same_v<RT,T>){ //el tipo comun es T
+            Matrix<RT,N,mtype> R(m);
+            return R/=val;
+        }else{ //el tipo comun es Scalar
+            Matrix<RT,N,mtype> R(m.descriptor());
+            transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele/val;});
+            return R;
+        }
+    }else{ // Scalar es tipo complejo
+        if constexpr (is_same_v<RT,T> && mtype != MATRIX_TYPE::HER){
+            Matrix<RT,N,mtype> R(m);
+            return R/=val;
+        }else{ //matriz hermitica
+            if constexpr (MATRIX_TYPE::HER == mtype){
+                Matrix<RT,2,MATRIX_TYPE::GEN> R(m.descriptor());
+                for (size_t i = 0; i < R.extent(0); ++i)
+                    for (size_t j = 0; j < R.extent(1); ++j)
+                        R(i,j) = R(i,j)/val;
+                return R;
+            }else{ //Scalar is the common type
+                Matrix<RT,N,mtype> R(m.descriptor());
+                transform(m.begin(),m.end(),R.begin(),[val](const auto &ele){return ele/val;});
+                return R;
+            }
+        }
+    }
 }
+
 template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
 inline Matrix<T,N,mtype> operator +(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
     if constexpr (std::is_same_v<RT,T>){

@@ -292,6 +292,17 @@ for (int i = 0; i < SM1.rows(); ++i)
 cout << SM1+SM2 << endl;
 cout << SM2-SM1 << endl;
 
+
+complex<double> tmp(1,2);
+auto tmp2 = 4.0/tmp;
+cout << tmp2 << endl;
+cout << SM1 << endl;
+auto SCM = tmp + SM1;
+
+cout << SM2 << endl;
+cout << SM2/tmp << endl;
+cout << tmp2*SM2 << endl;
+
 Matrix<complex<double>,1,MATRIX_TYPE::GEN> cvec = {complex<double>(1,2),complex<double>(2,2)};
 cout << "norma de vector complejo = " << cvec.norm2() << endl;
 cout << "norma cuadrada de vector complejo = " << cvec.norm2sqr() << endl;
@@ -310,8 +321,9 @@ Matrix<double,2,MATRIX_TYPE::GEN> M = {{2,4,6,8},
 
 Matrix<double,2,MATRIX_TYPE::GEN> R = M(0,slice(0,3,1));
 
-
+cout << "complejo + Matrix Real \n";
 cout << R << endl;
+cout << tmp+R << endl;
 
 M += M;
 Matrix<double,2,MATRIX_TYPE::GEN> T = R;

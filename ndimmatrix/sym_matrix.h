@@ -7,6 +7,7 @@ template<typename T>
 class Matrix<T,2,MATRIX_TYPE::SYMM>{
 private:
     size_t m_dim;
+    Matrix_Slice<2> m_desc;
     valarray<T> m_elems;
 public:
     static constexpr size_t order = 2;
@@ -20,15 +21,21 @@ public:
     Matrix(const Matrix&) = default;
     Matrix& operator=(const Matrix&) = default;
 
-    Matrix(size_t m):m_dim(m),m_elems(0.5*m*(m+1)){}
-    Matrix(size_t m,T val):m_dim(m),m_elems(val,0.5*m*(m+1)){}
-    Matrix(const Matrix<T,2> &other):m_dim(other.rows()),m_elems(0.5*m_dim*(m_dim+1)){
+    Matrix(size_t m):m_dim(m),m_desc(0,m,m),m_elems(0.5*m*(m+1)){}
+    Matrix(size_t m,T val):m_dim(m),m_desc(0,m,m),m_elems(val,0.5*m*(m+1)){}
+    Matrix(Matrix_Slice<2> desc):m_dim(desc.m_extents[0]),m_desc(desc),m_elems(0.5*m_dim*(m_dim+1)){
+        assert(desc.m_extents[0] == desc.m_extents[1]);
+    }
+    Matrix(const Matrix<T,2> &other):m_dim(other.rows()),m_desc(0,m_dim,m_dim),m_elems(0.5*m_dim*(m_dim+1)){
+        assert(other.rows() == other.cols());
         for (size_t i = 0; i < rows(); ++i)
             for (size_t j = i; j < cols(); ++j)
                 this->operator()(i,j) = other(i,j);
     }
     Matrix& operator=(const Matrix<T,2> &other){
+        assert(other.rows() == other.cols());
         m_dim = other.rows();
+        m_desc = other.descriptor();
         m_elems.resize(0.5*m_dim*(m_dim+1));
         for (size_t i = 0; i < rows(); ++i)
             for (size_t j = i; j < cols(); ++j)
@@ -46,6 +53,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    Matrix_Slice<2> descriptor() const{return m_desc;}
     const valarray<T>& values() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
