@@ -1,7 +1,7 @@
 #include <iostream>
 #include "ndimmatrix/ndmatrix.h"
 #include "ndimmatrix/sym_matrix.h"
-#include "mkl.h"
+//#include "mkl.h"
 #include <chrono>
 
 using namespace std;
@@ -280,18 +280,27 @@ int main(){
 //        cin >> answer;
 //    }
 
+
+//Matrix<double,3,MATRIX_TYPE::SYMM> HM;
+
 Matrix<double,2,MATRIX_TYPE::SYMM> SM1(4);
 Matrix<double,2,MATRIX_TYPE::SYMM> SM2(4);
+Matrix<complex<double>,2,MATRIX_TYPE::GEN> GMC(4,4);
+Matrix<double,2,MATRIX_TYPE::GEN> GM(4,4);
+
+//Matrix<double,2,MATRIX_TYPE::HER> TM1;
 
 for (int i = 0; i < SM1.rows(); ++i)
     for (int j = i; j < SM1.cols(); ++j){
         SM1(i,j) = i*i;
         SM2(i,j) = i+j;
+        GMC(i,j) = complex<double>(i*j,i+j);
     }
 
 cout << SM1+SM2 << endl;
+cout  << GMC + GM << endl;
 cout << SM2-SM1 << endl;
-
+cout << GMC+SM1 << endl;
 
 complex<double> tmp(1,2);
 auto tmp2 = 4.0/tmp;

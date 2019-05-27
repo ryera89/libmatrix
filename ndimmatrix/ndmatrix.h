@@ -13,23 +13,28 @@
 //We must define MKL_Complex16 type before include the mkl.h header
 //#define MKL_Complex16 std::complex<double>
 //#define MKL_INT uint32_t
-#include "mkl.h"
+//#include "mkl.h"
 
 using std::vector;
 using std::valarray;
 using namespace std;
 enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
 
+
+template<typename T>
+constexpr bool is_complex(){
+    return is_same_v<T,complex<double>> || is_same_v<T,complex<float>> || is_same_v<T,complex<long double>>;
+}
+template<typename T>
+constexpr bool is_number(){ //es complejo o real
+    return is_arithmetic_v<T> || is_complex<T>();
+}
+
 //using MATRIX_TYPE::SYMM=SYMM;
 
 template<typename T,size_t N,MATRIX_TYPE type = MATRIX_TYPE::GEN,
-          typename = typename std::enable_if_t<((std::is_arithmetic_v<T> || std::is_same_v<T,std::complex<double>>
-                                                 || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>)
-                                                    && N > 2 && type == MATRIX_TYPE::GEN)
-                                               || (std::is_arithmetic_v<T> && (type != MATRIX_TYPE::HER) && N == 2)
-                                               || ((std::is_same_v<T,std::complex<double>>
-                                                    || std::is_same_v<T,std::complex<float>> || std::is_same_v<T,std::complex<long double>>)
-                                                   && N == 2) || (N == 1 && (type == MATRIX_TYPE::GEN)) >>
+          typename = typename std::enable_if_t<is_number<T>() && ((N!=2 && type == MATRIX_TYPE::GEN) ||
+                                              (N==2 && ((type == MATRIX_TYPE::HER && is_complex<T>()) || type != MATRIX_TYPE::HER))) >>
 class Matrix{
 private:
     Matrix_Slice<N> m_desc;
@@ -91,7 +96,7 @@ public:
     Matrix(std::initializer_list<U>) = delete;
     template<typename U>
     Matrix& operator=(std::initializer_list<U>) = delete;
-    Matrix_Slice<N> descriptor() const noexcept{return m_desc;}
+    const Matrix_Slice<N>& descriptor() const noexcept{return m_desc;}
     size_t size() const noexcept {return m_desc.m_size;} //element number
     size_t extent(size_t n) const{ //number of elements in dim = n
         assert(n < N);
@@ -302,7 +307,7 @@ public:
     template<typename U>
     Matrix& operator=(std::initializer_list<U>) = delete;
     Matrix& operator =(T val){m_elems = val; return *this;}
-    Matrix_Slice<2> descriptor() const noexcept{
+    const Matrix_Slice<2>& descriptor() const noexcept{
         return m_desc;
     }
     size_t size() const noexcept {return m_desc.m_size;}
@@ -562,7 +567,7 @@ public:
     //std::valarray<T>& values() {return m_elems;}
     const std::valarray<T>& values() const{return m_elems;}
 
-    Matrix_Slice<1> descriptor() const noexcept{
+    const Matrix_Slice<1>& descriptor() const noexcept{
         return m_desc;
     }
 
@@ -738,10 +743,7 @@ inline  std::ostream &operator << (std::ostream &os,const Matrix<T,1> &m){
 //    return R+=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
                    Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Scalar &val,const Matrix<T,N,mtype> &m){
 
     //Scalar es de tipo real (ie: double,float,int)
@@ -779,11 +781,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R+=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Scalar &val,Matrix<T,N,mtype> &&m){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator +(const Scalar &val,Matrix<T,N,mtype> &&m){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -820,11 +819,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R+=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(const Matrix<T,N,mtype> &m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator +(const Matrix<T,N,mtype> &m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -861,11 +857,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R+=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator +(Matrix<T,N,mtype> &&m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator +(Matrix<T,N,mtype> &&m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -905,11 +898,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator -(const Scalar &val,const Matrix<T,N,mtype> &m){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -949,11 +939,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Scalar &val,Matrix<T,N,mtype> &&m){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator -(const Scalar &val,Matrix<T,N,mtype> &&m){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -992,11 +979,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R-=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator -(const Matrix<T,N,mtype> &m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1033,11 +1017,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R-=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator -(Matrix<T,N,mtype> &&m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator -(Matrix<T,N,mtype> &&m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1075,11 +1056,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R*=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Scalar &val,const Matrix<T,N,mtype> &m){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator *(const Scalar &val,const Matrix<T,N,mtype> &m){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1116,11 +1094,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R*=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                   || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                   || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Scalar &val,Matrix<T,N,mtype> &&m){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator *(const Scalar &val,Matrix<T,N,mtype> &&m){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1157,11 +1132,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R*=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(const Matrix<T,N,mtype> &m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator *(const Matrix<T,N,mtype> &m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1198,11 +1170,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R*=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator *(Matrix<T,N,mtype> &&m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator *(Matrix<T,N,mtype> &&m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1239,11 +1208,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R/=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                  || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                  conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                  Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator /(const Matrix<T,N,mtype> &m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator /(const Matrix<T,N,mtype> &m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1280,11 +1246,8 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
 //    return R/=val;
 //}
 template<typename T,typename Scalar,typename RT = common_type_t<T,Scalar>,size_t N,MATRIX_TYPE mtype>
-inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
-                       || is_same_v<Scalar,complex<float>> || is_same_v<Scalar,complex<long double>>,
-                   conditional_t<(is_same_v<Scalar,complex<double>> || is_same_v<Scalar,complex<float>>
-                                  || is_same_v<Scalar,complex<long double>>) && (mtype == MATRIX_TYPE::HER),
-                                 Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>> operator /(Matrix<T,N,mtype> &&m,const Scalar &val){
+inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (mtype == MATRIX_TYPE::HER),
+                   Matrix<RT,N,MATRIX_TYPE::GEN>,Matrix<RT,N,mtype>>>  operator /(Matrix<T,N,mtype> &&m,const Scalar &val){
 
     //Scalar es de tipo real (ie: double,float,int)
     if constexpr (is_arithmetic_v<Scalar>){
@@ -1316,14 +1279,38 @@ inline enable_if_t<is_arithmetic_v<Scalar> || is_same_v<Scalar,complex<double>>
     }
 }
 
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
-inline Matrix<T,N,mtype> operator +(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
-    if constexpr (std::is_same_v<RT,T>){
-        Matrix<RT,N,mtype> R(m1);
-        return R+=m2;
+//TODO ver como hago funcionar esto
+template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+    inline  conditional_t<mtype1==mtype2,Matrix<RT,N,mtype1>,Matrix<RT,2,MATRIX_TYPE::GEN>> /*conditional_t<(mtype1 == MATRIX_TYPE::HER &&
+                     mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>) || (mtype2 == MATRIX_TYPE::HER &&
+                     mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>),Matrix<RT,2,MATRIX_TYPE::HER>,
+                     Matrix<RT,2,MATRIX_TYPE::GEN>>>*/
+operator +(const Matrix<T,N,mtype1> &m1,const Matrix<U,N,mtype2> &m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R+=m2;
+        }else{
+            Matrix<RT,N,mtype1> R(m2);
+            return R+=m1;
+        }
     }else{
-        Matrix<RT,N> R(m2);
-        return R+=m1;
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+//        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+//                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+//            Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+//            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
+//            return R;
+//        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) + m2(i,j);
+            return R;
+//        }
     }
 }
 template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>

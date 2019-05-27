@@ -53,7 +53,7 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
-    Matrix_Slice<2> descriptor() const{return m_desc;}
+    const Matrix_Slice<2>& descriptor() const{return m_desc;}
     const valarray<T>& values() const{return m_elems;}
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
