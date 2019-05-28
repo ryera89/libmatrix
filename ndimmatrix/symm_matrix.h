@@ -1,5 +1,5 @@
-#ifndef SYM_MATRIX_H
-#define SYM_MATRIX_H
+#ifndef SYMM_MATRIX_H
+#define SYMM_MATRIX_H
 
 #include "ndmatrix.h"
 
@@ -27,13 +27,13 @@ public:
         assert(desc.m_extents[0] == desc.m_extents[1]);
     }
     Matrix(const Matrix<T,2> &other):m_dim(other.rows()),m_desc(0,m_dim,m_dim),m_elems(0.5*m_dim*(m_dim+1)){
-        assert(other.rows() == other.cols());
+        assert(other.rows() == other.cols()); //must be a square matrix
         for (size_t i = 0; i < rows(); ++i)
             for (size_t j = i; j < cols(); ++j)
                 this->operator()(i,j) = other(i,j);
     }
     Matrix& operator=(const Matrix<T,2> &other){
-        assert(other.rows() == other.cols());
+        assert(other.rows() == other.cols()); //must be a square matrix
         m_dim = other.rows();
         m_desc = other.descriptor();
         m_elems.resize(0.5*m_dim*(m_dim+1));
@@ -58,10 +58,10 @@ public:
 
     Matrix apply(T (func)(T val)){Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix apply(T (func)(const T&)) const{Matrix r(m_dim); std::transform(begin(),end(),r.begin(),func); return r;}
-    Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
+    //Matrix& apply(void (func)(T&)){std::for_each(begin(),end(),func); return *this;}
 
     T& operator()(size_t i,size_t j){
-        assert(i < rows() && j < cols());
+        //assert(i < rows() && j < cols());
         if (i > j) std::swap(i,j); //upper triangle storage
         return m_elems[j + 0.5*i*(2*m_dim - i - 1)];
     }
@@ -95,8 +95,9 @@ public:
     }
     Matrix operator-() const
     {
-        Matrix res(rows(),cols());
-        std::transform(this->begin(),this->end(),res.begin(),[](const T &elem){return -elem;});
+        Matrix res(m_dim);
+        //std::transform(this->begin(),this->end(),res.begin(),[](const T &elem){return -elem;});
+        res.m_elems = -m_elems;
         return res;
     }
     //Arithmetic operations.
@@ -153,29 +154,5 @@ public:
                        [](const auto &val1,const auto &val2){return val1-val2;});
         return *this;
     }
-    //TODO valorar si esto tiene sentido
-//    template<typename U>
-//    Matrix& operator+=(const Matrix<U,2> &m)
-//    {
-//        assert(rows() == m.rows() && cols() == m.cols()); //symmetric matrizes are squared
-//        for (size_t i = 0; i < rows(); ++i){
-//            for (size_t j = i; j < cols(); ++j){
-//                this->operator()(i,j) += m(i,j);
-//            }
-//        }
-//        return *this;
-//    }
-//    template<typename U>
-//    Matrix& operator-=(const Matrix<U,2> &m)
-//    {
-//        assert(rows() == m.rows() && cols() == m.cols()); //symmetric matrizes are squared
-//        for (size_t i = 0; i < rows(); ++i){
-//            for (size_t j = i; j < cols(); ++j){
-//                this->operator()(i,j) -= m(i,j);
-//            }
-//        }
-//        return *this;
-//    }
 };
-
-#endif // SYM_MATRIX_H
+#endif // SYMM_MATRIX_H

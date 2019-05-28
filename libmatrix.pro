@@ -31,22 +31,23 @@ SOURCES += \
     ndimmatrix/ndmatrix.cpp
 
 HEADERS += \
+    ndimmatrix/herm_matrix.h \
     ndimmatrix/matrix.h \
     ndimmatrix/matrix_impl.h \
     ndimmatrix/matrix_ref.h \
     ndimmatrix/matrix_slice.h \
     ndimmatrix/ndmatrix.h \
-    ndimmatrix/sym_matrix.h
+    ndimmatrix/symm_matrix.h
 
-#unix {
-#    target.path = /usr/lib
-#    INSTALLS += target
+unix {
+    target.path = /usr/lib
+    #INSTALLS += target
 
-#    INCLUDEPATH += /opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/mkl/include/
-#    INCLUDEPATH += /usr/include/x86_64-linux-gnu/c++/8/
-#    LIBS += -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/mkl/lib/intel64/ \
-#    -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
-#    -L/opt/intel/parallel_studio_xe_2019.1.053/compilers_and_libraries_2019/linux/compiler/lib/intel64/  \
-#    -liomp5 -lpthread -lm #-dl
-#}
+    INCLUDEPATH += /opt/intel/parallel_studio_xe_2019.4.070/compilers_and_libraries_2019/linux/mkl/include/
+    INCLUDEPATH += /usr/include/x86_64-linux-gnu/c++/8/
+    LIBS += -L/opt/intel/parallel_studio_xe_2019.4.070/compilers_and_libraries_2019/linux/mkl/lib/intel64/ \
+    -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+    -L/opt/intel/parallel_studio_xe_2019.4.070/compilers_and_libraries_2019/linux/compiler/lib/intel64/  \
+    -liomp5 -lpthread -lm #-dl
+}
 

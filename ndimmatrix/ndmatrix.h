@@ -13,7 +13,7 @@
 //We must define MKL_Complex16 type before include the mkl.h header
 //#define MKL_Complex16 std::complex<double>
 //#define MKL_INT uint32_t
-//#include "mkl.h"
+#include "mkl.h"
 
 using std::vector;
 using std::valarray;
@@ -1279,13 +1279,9 @@ inline enable_if_t<is_number<Scalar>(), conditional_t<is_complex<Scalar>() && (m
     }
 }
 
-//TODO ver como hago funcionar esto
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
-    inline  conditional_t<mtype1==mtype2,Matrix<RT,N,mtype1>,Matrix<RT,2,MATRIX_TYPE::GEN>> /*conditional_t<(mtype1 == MATRIX_TYPE::HER &&
-                     mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>) || (mtype2 == MATRIX_TYPE::HER &&
-                     mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>),Matrix<RT,2,MATRIX_TYPE::HER>,
-                     Matrix<RT,2,MATRIX_TYPE::GEN>>>*/
-operator +(const Matrix<T,N,mtype1> &m1,const Matrix<U,N,mtype2> &m2){
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator +(const Matrix<T,N,mtype1> &m1,const Matrix<U,N,mtype2> &m2){
     if constexpr (mtype1 == mtype2){
         if constexpr (is_same_v<RT,T>){
             Matrix<RT,N,mtype1> R(m1);
@@ -1299,73 +1295,346 @@ operator +(const Matrix<T,N,mtype1> &m1,const Matrix<U,N,mtype2> &m2){
         assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
                           m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
 
-//        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
-//                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
-//            Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
-//            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
-//            return R;
-//        }else{
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
+            return R;
+        }else{
             Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
             for (size_t i = 0; i < R.rows(); ++i)
                 for (size_t j = 0; j < R.cols(); ++j)
                     R(i,j) = m1(i,j) + m2(i,j);
             return R;
-//        }
+        }
     }
 }
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
-inline Matrix<T,N> operator +(Matrix<T,N> &&m1,const Matrix<U,N> &m2){
-    if constexpr (std::is_same_v<RT,T>){
-        Matrix<RT,N> R(m1);
-        return R+=m2;
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator +(Matrix<T,N,mtype1> &&m1,const Matrix<U,N,mtype2> &m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R+=m2;
+        }else{
+            Matrix<RT,N,mtype1> R(m2);
+            return R+=m1;
+        }
     }else{
-        Matrix<RT,N> R(m2);
-        return R+=m1;
-    }
-}
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
-inline Matrix<T,N> operator +(const Matrix<T,N> &m1,Matrix<U,N> &&m2){
-    if constexpr (std::is_same_v<RT,T> && !std::is_same_v<T,U>){
-        Matrix<RT,N> R(m1);
-        return R+=m2;
-    }else{
-        Matrix<RT,N> R(m2);
-        return R+=m1;
-    }
-}
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
-inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
-    if constexpr (std::is_same_v<RT,T>){
-        Matrix<RT,N,mtype> R(m1);
-        return R-=m2;
-    }else{
-        Matrix<RT,N,mtype> R(-m2);
-        return R+=m1;
-    }
-}
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
-inline Matrix<T,N> operator -(Matrix<T,N> &&m1,const Matrix<U,N> &m2){
-    if constexpr (std::is_same_v<RT,T>){
-        Matrix<RT,N> R(m1);
-        return R-=m2;
-    }else{
-        Matrix<RT,N> R(-m2);
-        return R+=m1;
-    }
-}
-template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
-inline Matrix<T,N> operator -(const Matrix<T,N> &m1,Matrix<U,N> &&m2){
-    assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
                           m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
 
-    if constexpr (std::is_same_v<RT,T> && !std::is_same_v<T,U>){
-        Matrix<RT,N> R(m1);
-        return R-=m2;
-    }else{
-        Matrix<RT,N> R(m2);
-        std::transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const T &v1,const T &v2){return v1-v2;});
-        return R;
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype1 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1);
+                transform(R.begin(),R.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 + v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+                transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
+                return R;
+            }
+
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) + m2(i,j);
+            return R;
+        }
     }
 }
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator +(const Matrix<T,N,mtype1> &m1,Matrix<U,N,mtype2> &&m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T> && !is_same_v<T,U>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R+=m2;
+        }else{
+            Matrix<RT,N,mtype1> R(m2);
+            return R+=m1;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
 
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype2 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m2);
+                transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 + v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+                transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
+                return R;
+            }
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) + m2(i,j);
+            return R;
+        }
+    }
+}
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator +(Matrix<T,N,mtype1> &&m1,Matrix<U,N,mtype2> &&m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R+=m2;
+        }else{
+            Matrix<RT,N,mtype1> R(m2);
+            return R+=m1;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype1 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1);
+                transform(R.begin(),R.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 + v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m2);
+                transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const T &v1,const U &v2){return v1+v2;});
+                return R;
+            }
+
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) + m2(i,j);
+            return R;
+        }
+    }
+}
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator -(const Matrix<T,N,mtype1> &m1,const Matrix<U,N,mtype2> &m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R-=m2;
+        }else{
+            assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                              m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+            Matrix<RT,N,mtype1> R(m2.descriptor());
+            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+            return R;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1-v2;});
+            return R;
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) - m2(i,j);
+            return R;
+        }
+    }
+}
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator -(Matrix<T,N,mtype1> &&m1,const Matrix<U,N,mtype2> &m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R-=m2;
+        }else{
+            assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                              m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+            Matrix<RT,N,mtype1> R(m2.descriptor());
+            transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+            return R;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype1 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1);
+                transform(R.begin(),R.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+                transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1-v2;});
+                return R;
+            }
+
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) - m2(i,j);
+            return R;
+        }
+    }
+}
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator -(const Matrix<T,N,mtype1> &m1,Matrix<U,N,mtype2> &&m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T> && !is_same_v<T,U>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R-=m2;
+        }else{
+            assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                              m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+            Matrix<RT,N,mtype1> R(m2);
+            transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+            return R;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype2 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m2);
+                transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1.rows());
+                transform(m1.begin(),m1.end(),m2.begin(),R.begin(),[](const T &v1,const U &v2){return v1-v2;});
+                return R;
+            }
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) - m2(i,j);
+            return R;
+        }
+    }
+}
+//NOTE: Aca no esta incluido el caso de una matriz diagonal de forma optimizada
+template<typename T,typename U,typename RT = common_type_t<T,U>,size_t N,MATRIX_TYPE mtype1,MATRIX_TYPE mtype2>
+inline auto operator -(Matrix<T,N,mtype1> &&m1,Matrix<U,N,mtype2> &&m2){
+    if constexpr (mtype1 == mtype2){
+        if constexpr (is_same_v<RT,T>){
+            Matrix<RT,N,mtype1> R(m1);
+            return R-=m2;
+        }else{
+            assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                              m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+            Matrix<RT,N,mtype1> R(m2);
+            transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+            return R;
+        }
+    }else{
+        static_assert (N==2,"For other Matrix Type diferent than GEN the dimension must be 2.");
+        assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+        if constexpr ((mtype1 == MATRIX_TYPE::HER && mtype2 == MATRIX_TYPE::SYMM && is_arithmetic_v<U>)
+                      || (mtype2 == MATRIX_TYPE::HER && mtype1 == MATRIX_TYPE::SYMM && is_arithmetic_v<T>)){
+            if constexpr (mtype1 == MATRIX_TYPE::HER){
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m1);
+                transform(R.begin(),R.end(),m2.begin(),R.begin(),[](const auto &v1,const auto &v2){return v1 - v2;});
+                return R;
+            }else{
+                Matrix<RT,2,MATRIX_TYPE::HER> R(m2);
+                transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const T &v1,const U &v2){return v1-v2;});
+                return R;
+            }
+
+        }else{
+            Matrix<RT,2,MATRIX_TYPE::GEN> R(m1.descriptor());
+            for (size_t i = 0; i < R.rows(); ++i)
+                for (size_t j = 0; j < R.cols(); ++j)
+                    R(i,j) = m1(i,j) - m2(i,j);
+            return R;
+        }
+    }
+}
+//template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N,MATRIX_TYPE mtype>
+//inline Matrix<T,N,mtype> operator -(const Matrix<T,N,mtype> &m1,const Matrix<U,N,mtype> &m2){
+//    if constexpr (std::is_same_v<RT,T>){
+//        Matrix<RT,N,mtype> R(m1);
+//        return R-=m2;
+//    }else{
+//        Matrix<RT,N,mtype> R(-m2);
+//        return R+=m1;
+//    }
+//}
+//template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+//inline Matrix<T,N> operator -(Matrix<T,N> &&m1,const Matrix<U,N> &m2){
+//    if constexpr (std::is_same_v<RT,T>){
+//        Matrix<RT,N> R(m1);
+//        return R-=m2;
+//    }else{
+//        Matrix<RT,N> R(-m2);
+//        return R+=m1;
+//    }
+//}
+//template<typename T,typename U,typename RT = std::common_type_t<T,U>,size_t N>
+//inline Matrix<T,N> operator -(const Matrix<T,N> &m1,Matrix<U,N> &&m2){
+//    assert(std::equal(m1.descriptor().m_extents.begin(),m1.descriptor().m_extents.end(),
+//                          m2.descriptor().m_extents.begin(),m2.descriptor().m_extents.end()));
+
+//    if constexpr (std::is_same_v<RT,T> && !std::is_same_v<T,U>){
+//        Matrix<RT,N> R(m1);
+//        return R-=m2;
+//    }else{
+//        Matrix<RT,N> R(m2);
+//        std::transform(m1.begin(),m1.end(),R.begin(),R.begin(),[](const T &v1,const T &v2){return v1-v2;});
+//        return R;
+//    }
+//}
+template <typename T>
+inline T operator *(const Matrix<T,1> &v1, const Matrix<T,1> &v2){
+    assert(v1.size() == v2.size());
+    if constexpr (is_arithmetic_v<T>){
+        return inner_product(v1.begin(),v1.end(),v2.begin(),0);
+    }else{
+        return inner_product(v1.begin(),v1.end(),v2.begin(),complex<double>(0,0));
+    }
+}
+template <typename T,typename U, typename RT = common_type_t<T,U>,MATRIX_TYPE mtype>
+inline auto operator *(const Matrix<T,2,mtype> &m,const Matrix<U,1> &v){
+    assert(m.cols() == v.size());
+    Matrix<RT,1> r(m.rows());
+    if constexpr (mtype == MATRIX_TYPE::GEN){
+        for (size_t i = 0; i < r.size(); ++i){
+            Matrix_Ref<const T,1> mref = m.row(i);
+            if constexpr (is_arithmetic_v<RT>){
+                r(i) = inner_product(mref.data(),mref.data()+mref.size(),v.begin(),0.0);
+            }else{
+                r(i) = inner_product(mref.data(),mref.data()+mref.size(),v.begin(),complex<double>(0,0));
+            }
+        }
+    }else{
+        if constexpr (mtype == MATRIX_TYPE::HER){
+            cblas_zhpmv(CblasRowMajor,CblasUpper,m.rows(),1.0,m.begin(),v.begin(),1,0.0,r.begin(),1);
+        }else{
+
+        }
+
+    }
+    return r;
+}
 #endif // NDMATRIX_H

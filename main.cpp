@@ -1,6 +1,7 @@
 #include <iostream>
 #include "ndimmatrix/ndmatrix.h"
-#include "ndimmatrix/sym_matrix.h"
+#include "ndimmatrix/symm_matrix.h"
+#include "ndimmatrix/herm_matrix.h"
 //#include "mkl.h"
 #include <chrono>
 
@@ -287,88 +288,106 @@ Matrix<double,2,MATRIX_TYPE::SYMM> SM1(4);
 Matrix<double,2,MATRIX_TYPE::SYMM> SM2(4);
 Matrix<complex<double>,2,MATRIX_TYPE::GEN> GMC(4,4);
 Matrix<double,2,MATRIX_TYPE::GEN> GM(4,4);
+Matrix<complex<double>,2,MATRIX_TYPE::HER> HM1(4);
+Matrix<complex<double>,2,MATRIX_TYPE::HER> HM2(4);
 
-//Matrix<double,2,MATRIX_TYPE::HER> TM1;
 
+complex<double> tmp = complex<double>(1,1);
 for (int i = 0; i < SM1.rows(); ++i)
     for (int j = i; j < SM1.cols(); ++j){
         SM1(i,j) = i*i;
         SM2(i,j) = i+j;
         GMC(i,j) = complex<double>(i*j,i+j);
+        HM1(i,j) = complex<double>(i*j,i+j);
+        HM2(i,j) = complex<double>(i+j,i*j);
     }
 
-cout << SM1+SM2 << endl;
-cout  << GMC + GM << endl;
-cout << SM2-SM1 << endl;
-cout << GMC+SM1 << endl;
-
-complex<double> tmp(1,2);
-auto tmp2 = 4.0/tmp;
-cout << tmp2 << endl;
-cout << SM1 << endl;
-auto SCM = tmp + SM1;
-
-cout << SM2 << endl;
-cout << SM2/tmp << endl;
-cout << tmp2*SM2 << endl;
-
-Matrix<complex<double>,1,MATRIX_TYPE::GEN> cvec = {complex<double>(1,2),complex<double>(2,2)};
-cout << "norma de vector complejo = " << cvec.norm2() << endl;
-cout << "norma cuadrada de vector complejo = " << cvec.norm2sqr() << endl;
-
-Matrix<double,1,MATRIX_TYPE::GEN> rvec = {1,2};
-
-Matrix<complex<double>,1> cvecres = -cvec-rvec;
+cout << HM1 << "\n" << HM2 << endl;
+auto R1 = HM1 + HM2;
+cout << "suma de dos matrices hermiticas: \n" << R1 << endl;
+auto R2 = SM1 + SM2;
+cout << "suma de dos matrices simetricas: \n" << R2 << endl;
+auto R3 = SM1+HM1;
+auto R4 = HM2-SM2;
+auto R5 = HM1+=5;
+cout << "suma de matriz simetrica y hermitica \n" << R3 << "\n" << R4 << "\n" << R5 << endl;
+auto R6 = GMC + SM1;
+auto R7 = HM2 + GMC;
+cout << R6 << "\n" << R7 << endl;
 
 
+//cout << SM1+SM2 << endl;
+//cout  << GMC + GM << endl;
+//cout << SM2-SM1 << endl;
+//cout << GMC+SM1 << endl;
+//auto A =  SM1 + TESTHER;
 
-cout << cvecres << endl;
+//complex<double> tmp(1,2);
+//auto tmp2 = 4.0/tmp;
+//cout << tmp2 << endl;
+//cout << SM1 << endl;
 
+//cout << SM2 << endl;
+//cout << SM2/tmp << endl;
+//cout << tmp2*SM2 << endl;
 
-Matrix<double,2,MATRIX_TYPE::GEN> M = {{2,4,6,8},
-                      {1,3,5,7}};
+//Matrix<complex<double>,1,MATRIX_TYPE::GEN> cvec = {complex<double>(1,2),complex<double>(2,2)};
+//cout << "norma de vector complejo = " << cvec.norm2() << endl;
+//cout << "norma cuadrada de vector complejo = " << cvec.norm2sqr() << endl;
 
-Matrix<double,2,MATRIX_TYPE::GEN> R = M(0,slice(0,3,1));
+//Matrix<double,1,MATRIX_TYPE::GEN> rvec = {1,2};
 
-cout << "complejo + Matrix Real \n";
-cout << R << endl;
-cout << tmp+R << endl;
-
-M += M;
-Matrix<double,2,MATRIX_TYPE::GEN> T = R;
-M = R - T;
-cout << M << "\n";
-cout << R << endl;
-
-T*=30;
-cout << T << endl;
-T/=15;
-cout << T << endl;
-
-Matrix<double,1,MATRIX_TYPE::GEN> vec1 = M.row(0);
-
-cout << vec1 << "\n";
-
-Matrix<double,1,MATRIX_TYPE::GEN> v3 = {4,5,6,7};
-
-cout << v3 << endl;
-
-v3 = {1,2,3,4,5,6,7,8,9};
-
-cout << v3 <<  endl;
-
-v3 = -vec1;
-
-cout << v3 << endl;
-
-//cout << "Norma M = " << M.norm2() << " ---" << "vector v = " << v3.norm2() << endl;
+//Matrix<complex<double>,1> cvecres = -cvec-rvec;
 
 
-v3 = vec1 + 4;
-cout << v3 << endl;
 
-v3 = v3 - vec1;
-cout << v3 << endl;
+//cout << cvecres << endl;
+
+
+//Matrix<double,2,MATRIX_TYPE::GEN> M = {{2,4,6,8},
+//                      {1,3,5,7}};
+
+//Matrix<double,2,MATRIX_TYPE::GEN> R = M(0,slice(0,3,1));
+
+//cout << "complejo + Matrix Real \n";
+//cout << R << endl;
+//cout << tmp+R << endl;
+
+//M += M;
+//Matrix<double,2,MATRIX_TYPE::GEN> T = R;
+//M = R - 2*T;
+//cout << M << "\n";
+//cout << R << endl;
+
+//T*=30;
+//cout << T << endl;
+//T/=15;
+//cout << T << endl;
+
+//Matrix<double,1,MATRIX_TYPE::GEN> vec1 = M.row(0);
+
+//cout << vec1 << "\n";
+
+//Matrix<double,1,MATRIX_TYPE::GEN> v3 = {4,5,6,7};
+
+//cout << v3 << endl;
+
+//v3 = {1,2,3,4,5,6,7,8,9};
+
+//cout << v3 <<  endl;
+
+//v3 = -vec1;
+
+//cout << v3 << endl;
+
+////cout << "Norma M = " << M.norm2() << " ---" << "vector v = " << v3.norm2() << endl;
+
+
+//v3 = vec1 + 4;
+//cout << v3 << endl;
+
+//v3 = v3 - vec1;
+//cout << v3 << endl;
 
 
     return 0;
