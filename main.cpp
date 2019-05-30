@@ -316,6 +316,12 @@ auto R7 = HM2 + GMC;
 cout << R6 << "\n" << R7 << endl;
 
 
+Matrix<complex<double>,1> vec = {complex<double>(1,0),complex<double>(1,0),complex<double>(1,0),complex<double>(1,0)};
+Matrix<double,1> vec1 = {1,1,1,1};
+
+auto R8 = HM1*vec1;
+auto R9 = SM1*vec1;
+cout << "mulstiplicacion Matriz vector \n" << R9 << "\n" << R8;
 //cout << SM1+SM2 << endl;
 //cout  << GMC + GM << endl;
 //cout << SM2-SM1 << endl;
