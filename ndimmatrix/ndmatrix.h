@@ -1627,31 +1627,78 @@ inline auto operator *(const Matrix<T,2,mtype> &m,const Matrix<U,1> &v){
                 r(i) = inner_product(mref.data(),mref.data()+mref.size(),v.begin(),complex<double>(0,0));
             }
         }
-    }else{
-        if constexpr (mtype == MATRIX_TYPE::HER){
-            double alpha = 1.0;
-            double beta = 0.0;
-            cblas_zhpmv(CblasRowMajor,CblasUpper,m.rows(),&alpha,m.begin(),v.begin(),1,&beta,r.begin(),1);
-        }else{
-            if constexpr (mtype == MATRIX_TYPE::SYMM){
-                cblas_dspmv(CblasRowMajor,CblasUpper,m.rows(),1.0,m.begin(),v.begin(),1,0.0,r.begin(),1);
-            }else{
-                //TODO: otros casos no implementados aun
-            }
-        }
+        return r;
     }
-    return r;
+
+    if constexpr (mtype == MATRIX_TYPE::HER){
+        double alpha = 1.0;
+        double beta = 0.0;
+        if constexpr (is_same_v<T,complex<float>>){
+            cblas_chpmv(CblasRowMajor,CblasUpper,m.rows(),&alpha,m.begin(),v.begin(),1,&beta,r.begin(),1);
+            return r;
+        }
+        if constexpr (is_same_v<T,complex<double>>){
+            cblas_zhpmv(CblasRowMajor,CblasUpper,m.rows(),&alpha,m.begin(),v.begin(),1,&beta,r.begin(),1);
+            return r;
+        }
+
+        throw ("ERROR: no matrix-vector multiplication implemented for data types");
+    }
+
+    if constexpr (mtype == MATRIX_TYPE::SYMM){
+        if constexpr (is_same_v<T,float>){
+            cblas_sspmv(CblasRowMajor,CblasUpper,m.rows(),1.0,m.begin(),v.begin(),1,0.0,r.begin(),1);
+            return r;
+        }
+        if constexpr (is_same_v<T,double>){
+           cblas_dspmv(CblasRowMajor,CblasUpper,m.rows(),1.0,m.begin(),v.begin(),1,0.0,r.begin(),1);
+           return r;
+        }
+        throw ("ERROR: no matrix-vector multiplication implemented for data types");
+    }
+
+    throw ("ERROR: no matrix-vector multiplication implemented for data types");
 }
-inline Matrix<double,2> operator*(const Matrix<double,2> &m1,const Matrix<double,2> &m2){
+template<typename T,typename U,typename RT = common_type_t<T,U>>
+inline Matrix<RT,2> operator*(const Matrix<T,2> &m1,const Matrix<U,2> &m2){
     size_t m1_rows = m1.rows();
     size_t m1_cols = m1.cols();
     size_t m2_rows = m2.rows();
     size_t m2_cols = m2.cols();
     assert(m1_cols == m2_rows);
-    Matrix<double,2> res(m1_rows,m2_cols);
-    cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
-                int(m1_rows),int(m2_cols),int(m1_cols),1.0,m1.begin(),
-                int(m1_cols),m2.begin(),int(m2_cols),0.0,res.begin(),int(m2_cols));
-    return res;
+    Matrix<RT,2> res(m1_rows,m2_cols);
+    if constexpr (is_same_v<T,float> && is_same_v<U,float>){
+        cblas_sgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                    int(m1_rows),int(m2_cols),int(m1_cols),1.0,m1.begin(),
+                    int(m1_cols),m2.begin(),int(m2_cols),0.0,res.begin(),int(m2_cols));
+        return res;
+
+    }
+    if constexpr (is_same_v<T,double> && is_same_v<U,double>){
+        cblas_dgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                    int(m1_rows),int(m2_cols),int(m1_cols),1.0,m1.begin(),
+                    int(m1_cols),m2.begin(),int(m2_cols),0.0,res.begin(),int(m2_cols));
+        return res;
+
+    }
+    if constexpr (is_same_v<T,complex<float>> || is_same_v<U,complex<float>>){
+        double alpha = 1.0;
+        double beta = 0.0;
+        cblas_cgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                    int(m1_rows),int(m2_cols),int(m1_cols),&alpha,m1.begin(),
+                    int(m1_cols),m2.begin(),int(m2_cols),&beta,res.begin(),int(m2_cols));
+        return res;
+    }
+    if constexpr (is_same_v<T,complex<double>> || is_same_v<U,complex<double>>){
+        double alpha = 1.0;
+        double beta = 0.0;
+        cblas_zgemm(CBLAS_LAYOUT::CblasRowMajor,CBLAS_TRANSPOSE::CblasNoTrans,CBLAS_TRANSPOSE::CblasNoTrans,
+                    int(m1_rows),int(m2_cols),int(m1_cols),&alpha,m1.begin(),
+                    int(m1_cols),m2.begin(),int(m2_cols),&beta,res.begin(),int(m2_cols));
+        return res;
+    }
+
+    throw ("ERROR: no matrix-matrix multiplication implemented for data types");
+
 }
 #endif // NDMATRIX_H

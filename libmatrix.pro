@@ -37,6 +37,7 @@ HEADERS += \
     ndimmatrix/matrix_ref.h \
     ndimmatrix/matrix_slice.h \
     ndimmatrix/ndmatrix.h \
+    ndimmatrix/sparse_matrix.h \
     ndimmatrix/symm_matrix.h
 
 unix {
