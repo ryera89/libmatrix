@@ -2,7 +2,23 @@
 #define SPARSE_MATRIX_H
 
 #include "ndmatrix.h"
+#include <iostream>
 //#include "mkl_spblas.h"
+
+
+void check_sparse_operation_status(sparse_status_t status){
+    switch (status) {
+    case SPARSE_STATUS_ALLOC_FAILED: throw("Internal memory allocation failed.");
+    case SPARSE_STATUS_INVALID_VALUE:throw(" The input parameters contain an invalid value.");
+    case SPARSE_STATUS_INTERNAL_ERROR: throw("An error in algorithm implementation occurred.");
+    case SPARSE_STATUS_NOT_SUPPORTED: throw("The requested operation is not supported.");
+    case SPARSE_STATUS_NOT_INITIALIZED: throw("The routine encountered an empty handle or matrix array.");
+    case SPARSE_STATUS_EXECUTION_FAILED: throw("Execution failed.");
+    default: break; //status == SPARSE_STATUS_SUCCESS
+    }
+}
+
+
 
 typedef int int_t;
 template<typename T>
@@ -13,12 +29,36 @@ private:
     sparse_index_base_t m_index; //base index
     vector<int_t> m_rows_start; //most recent representation
     vector<int_t> m_rows_end; //most recent representation
-    vector<int_t> m_rowIndex; //representacion 3 Array
+    vector<int_t> m_rowsIndex; //representacion 3 Array
     vector<int_t> m_columns; //index de las columnas
     vector<T> m_elems; //elementos
     sparse_matrix_t m_handler;
     static constexpr T zero_val = T();
 
+    void shrinkToFitDataVectors(){
+        m_rows_start.shrink_to_fit();
+        m_rows_end.shrink_to_fit();
+        m_rowsIndex.shrink_to_fit();
+        m_columns.shrink_to_fit();
+        m_elems.shrink_to_fit();
+    }
+    void initSparseMatrixHandler(){
+        sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
+        if constexpr (is_same_v<T,float>){
+            status = mkl_sparse_s_create_csr(&m_handler,m_index,m_rows,m_cols,m_rows_start.data(),m_rows_end.data(),
+                                             m_columns.data(),m_elems.data());
+        }else if constexpr (is_same_v<T,double>) {
+            status = mkl_sparse_d_create_csr(&m_handler,m_index,m_rows,m_cols,m_rows_start.data(),m_rows_end.data(),
+                                             m_columns.data(),m_elems.data());
+        }else if constexpr (is_same_v<T,complex<float>>) {
+            status = mkl_sparse_c_create_csr(&m_handler,m_index,m_rows,m_cols,m_rows_start.data(),m_rows_end.data(),
+                                             m_columns.data(),m_elems.data());
+        }else if constexpr (is_same_v<T,complex<double>>) {
+            status =  mkl_sparse_z_create_csr(&m_handler,m_index,m_rows,m_cols,m_rows_start.data(),m_rows_end.data(),
+                                             m_columns.data(),m_elems.data());
+        }
+        check_sparse_operation_status(status);
+    }
 public:
     static constexpr size_t order = 2;
     static constexpr MATRIX_TYPE matrix_type = MATRIX_TYPE::CSR;
@@ -27,42 +67,67 @@ public:
     using const_iterator = typename vector<T>::const_iterator;
 
     Matrix() = default;
-    ~Matrix() = default;
+    ~Matrix(){mkl_sparse_destroy(m_handler);} //WARNING: may be memory leaks //= default;
     //Move constructor and assignment
-    Matrix(Matrix&&) = default;
-    Matrix& operator=(Matrix&&) = default;
+    Matrix(Matrix&& other):m_rows(other.m_rows),m_cols(other.m_cols),m_index(other.m_index),m_rows_start(move(other.m_rows_start)),
+                             m_rows_end(move(other.m_rows_end)),m_rowsIndex(move(other.m_rowsIndex)),m_columns(move(other.m_columns)),
+                             m_elems(move(other.m_elems)){
+        initSparseMatrixHandler();
+    } //= default;
+    Matrix& operator=(Matrix&& other){
+    m_rows = other.m_rows;
+    m_cols = other.m_cols;
+    m_index = other.m_index;
+    m_rows_start = move(other.m_rows_start);
+    m_rows_end = move(other.m_rows_end);
+    m_rowsIndex = move(other.m_rowsIndex);
+    m_columns = move(other.m_columns);
+    m_elems = move(other.m_elems);
+    initSparseMatrixHandler();
+    return *this;
+} //= default; //= default;
     //Copy constructor and assignment
-    Matrix(const Matrix&) = default;
-    Matrix& operator=(const Matrix&) = default;
+    Matrix(const Matrix& other):m_rows(other.m_rows),m_cols(other.m_cols),m_index(other.m_index),m_rows_start(other.m_rows_start),
+                                  m_rows_end(other.m_rows_end),m_rowsIndex(other.m_rowsIndex),m_columns(other.m_columns),
+                                  m_elems(other.m_elems){
+
+        initSparseMatrixHandler();
+    } //= default;
+    Matrix& operator=(const Matrix& other){
+        m_rows = other.m_rows;
+        m_cols = other.m_cols;
+        m_index = other.m_index;
+        m_rows_start = other.m_rows_start;
+        m_rows_end = other.m_rows_end;
+        m_rowsIndex = other.m_rowsIndex;
+        m_columns = other.m_columns;
+        m_elems = other.m_elems;
+        initSparseMatrixHandler();
+        return *this;
+    } //= default;
 
 
     Matrix(uint32_t rows,uint32_t cols,sparse_index_base_t index,const vector<int_t> &rows_start,const vector<int_t> &rows_end,
            const vector<int_t> &columns,const vector<T> &vals):m_rows(rows),m_cols(cols),m_index(index),m_rows_start(rows_start),
-                                                                  m_rows_end(rows_end),m_rowIndex(rows_start),m_columns(columns),m_elems(vals){
+                                                                  m_rows_end(rows_end),m_rowsIndex(rows_start),m_columns(columns),m_elems(vals){
 
         assert(m_columns.size() == m_elems.size() && m_rows == m_rows_start.size() && m_rows == m_rows_end.size());
-        m_rowIndex.push_back(m_elems.size());
-
-        m_rows_start.shrink_to_fit();
-        m_rows_end.shrink_to_fit();
-        m_rowIndex.shrink_to_fit();
-        m_columns.shrink_to_fit();
-        m_elems.shrink_to_fit();
+        m_rowsIndex.push_back(m_elems.size());
+        shrinkToFitDataVectors();
+        initSparseMatrixHandler(); //inicializando el handler
     }
 
     Matrix(uint32_t rows,uint32_t cols,sparse_index_base_t index,vector<int_t> &&rows_start,vector<int_t> &&rows_end,vector<int_t> &&columns,
-           vector<T> &&vals):m_rows(rows),m_cols(cols),m_index(index),m_rows_start(rows_start),m_rows_end(rows_end),m_rowIndex(m_rows_start),
+           vector<T> &&vals):m_rows(rows),m_cols(cols),m_index(index),m_rows_start(rows_start),m_rows_end(rows_end),m_rowsIndex(m_rows_start),
                                m_columns(columns), m_elems(vals){
         assert(m_columns.size() == m_elems.size() && m_rows == m_rows_start.size() && m_rows == m_rows_end.size());
-        m_rowIndex.push_back(m_elems.size());
-
-        m_rows_start.shrink_to_fit();
-        m_rows_end.shrink_to_fit();
-        m_rowIndex.shrink_to_fit();
-        m_columns.shrink_to_fit();
-        m_elems.shrink_to_fit();
+        m_rowsIndex.push_back(m_elems.size());
+        shrinkToFitDataVectors();
+        initSparseMatrixHandler(); //inicializando el handler
     }
-    Matrix(const Matrix<T,2> &m):m_rows(m.rows()),m_cols(m.cols()),m_rows_start(m_rows),m_rows_end(m_rows){
+
+    Matrix(const Matrix<T,2> &m):m_rows(m.rows()),m_cols(m.cols()),m_index(SPARSE_INDEX_BASE_ZERO),m_rows_start(m_rows),
+                                    m_rows_end(m_rows){
         for (size_t i = 0; i < m_rows; ++i){
             bool row_first_nonzero = true;
             for (size_t j = 0; j < m_cols; ++j){
@@ -81,13 +146,16 @@ public:
                 m_rows_end[i] = m_elems.size();
             }else{ m_rows_end[i] = m_elems.size();}
         }
+        m_rowsIndex = m_rows_start;
+        m_rowsIndex.push_back(m_elems.size());
+        shrinkToFitDataVectors();
+        initSparseMatrixHandler();
     }
-
-    size_t nnz() const{return m_elems.size();}
 
     Matrix& operator=(const Matrix<T,2> &m){
         m_rows = m.rows();
         m_cols = m.cols();
+        m_index = SPARSE_INDEX_BASE_ZERO;
         m_rows_start.resize(m_rows);
         m_rows_end.resize(m_rows);
         m_columns.clear();
@@ -110,8 +178,19 @@ public:
                 m_rows_end[i] = m_elems.size();
             }else{ m_rows_end[i] = m_elems.size();}
         }
+
+        m_rowsIndex = m_rows_start;
+        m_rowsIndex.push_back(m_elems.size());
+        shrinkToFitDataVectors();
+        initSparseMatrixHandler();
         return *this;
     }
+
+    size_t nnz() const{return m_elems.size();}
+    uint32_t rows() const{return m_rows;}
+    uint32_t cols() const{return m_cols;}
+
+    //TODO: revisar el algoritmo aca...
     const T& operator()(size_t i,size_t j) const{
         assert(i < m_rows && j < m_cols);
         int_t beg = m_rows_start[i];
@@ -129,6 +208,7 @@ public:
         }
         return zero_val;
     }
+    //TODO: revisar el algoritmo aca...
     Matrix operator()(const vector<uint32_t> &iindex,const vector<uint32_t> &jindex) const{
         uint32_t nrow = iindex.size();
         uint32_t ncol = jindex.size();
@@ -204,10 +284,6 @@ public:
         }
         return Matrix(nrow,ncol,pointerB,pointerE,columns,elems);
     }
-
-    uint32_t rows() const{return m_rows;}
-    uint32_t cols() const{return m_cols;}
-
     void printData() const{
         for (size_t i = 0; i < m_rows_start.size(); ++i){
             uint32_t beg = m_rows_start[i];
@@ -218,30 +294,39 @@ public:
         }
     }
 
+    sparse_index_base_t baseIndex() const{return m_index;} //base index
     const vector<T>& values() const{return m_elems;}
     const vector<int_t>& columns() const{return m_columns;}
-    const vector<int_t>& row_start() const{return m_rows_start;}
-    const vector<int_t>& row_end() const{return m_rows_end;}
+    const vector<int_t>& rowStart() const{return m_rows_start;}
+    const vector<int_t>& rowEnd() const{return m_rows_end;}
+    const vector<int_t>& rowIndex() const{return m_rowsIndex;} //rowIndex for 3 array variation
+    const sparse_matrix_t& sparse_matrix_handler() const{return m_handler;} //sparse matrix handler
 
-    vector<int_t>::iterator beginColumns(){return m_columns.begin();}
-    vector<int_t>::const_iterator beginColumns() const {return m_columns.cbegin();}
-    vector<int_t>::iterator endColumns(){return m_columns.end();}
-    vector<int_t>::const_iterator endColumns() const {return m_columns.cend();}
+    vector<int_t>::iterator columnsBegin(){return m_columns.begin();}
+    vector<int_t>::const_iterator columnsBegin() const {return m_columns.cbegin();}
+    vector<int_t>::iterator columnsEnd(){return m_columns.end();}
+    vector<int_t>::const_iterator columnsEnd() const {return m_columns.cend();}
 
-    vector<int_t>::iterator beginRowsStart(){return m_rows_start.begin();}
-    vector<int_t>::const_iterator beginRowsStart() const{return m_rows_start.cbegin();}
-    vector<int_t>::iterator endRowsStart(){return m_rows_start.end();}
-    vector<int_t>::const_iterator endRowsStart() const{return m_rows_start.cend();}
+    vector<int_t>::iterator rowsStartBegin(){return m_rows_start.begin();}
+    vector<int_t>::const_iterator rowsStartBegin() const{return m_rows_start.cbegin();}
+    vector<int_t>::iterator rowsStartEnd(){return m_rows_start.end();}
+    vector<int_t>::const_iterator rowsStartEnd() const{return m_rows_start.cend();}
 
-    vector<int_t>::iterator beginRowsEnd(){return m_rows_end.begin();}
-    vector<int_t>::const_iterator beginRowsEnd() const{return m_rows_end.cbegin();}
-    vector<int_t>::iterator endRowsEnd(){return m_rows_end.end();}
-    vector<int_t>::const_iterator endRowsEnd() const{return m_rows_end.cend();}
+    vector<int_t>::iterator rowsEndBegin(){return m_rows_end.begin();}
+    vector<int_t>::const_iterator rowsEndBegin() const{return m_rows_end.cbegin();}
+    vector<int_t>::iterator rowsEndEnd(){return m_rows_end.end();}
+    vector<int_t>::const_iterator rowsEndEnd() const{return m_rows_end.cend();}
 
-    iterator beginValues(){return m_elems.begin();}
-    const_iterator beginValues() const{return m_elems.cbegin();}
-    iterator endValues(){return m_elems.end();}
-    const_iterator endValues() const{return m_elems.cend();}
+    //For 3 array variation
+    vector<int_t>::iterator rowsIndexBegin(){return m_rowsIndex.begin();}
+    vector<int_t>::const_iterator rowsIndexBegin() const{return m_rowsIndex.cbegin();}
+    vector<int_t>::iterator rowsIndexEnd(){return m_rowsIndex.end();}
+    vector<int_t>::const_iterator rowsIndexEnd() const{return m_rowsIndex.cend();}
+
+    iterator valuesBegin(){return m_elems.begin();}
+    const_iterator valuesBegin() const{return m_elems.cbegin();}
+    iterator valuesEnd(){return m_elems.end();}
+    const_iterator valuesEnd() const{return m_elems.cend();}
 
     int_t* columnsData(){return m_columns.data();}
     const int_t* columnsData() const {return m_columns.data();}
@@ -252,7 +337,157 @@ public:
     int_t* rowsEndData(){return m_rows_end.data();}
     const int_t* rowsEndData() const{return m_rows_end.data();}
 
+    //3 array variation
+    int_t* rowsIndexData(){return m_rowsIndex.data();}
+    const int_t* rowsIndexData() const{return m_rowsIndex.data();}
+
     T* valuesData(){return m_elems.data();}
     const T* valuesData() const{return m_elems.data();}
 };
+
+template<typename T>
+inline Matrix<T,2,MATRIX_TYPE::CSR> operator +(const Matrix<T,2,MATRIX_TYPE::CSR> &sm1,const Matrix<T,2,MATRIX_TYPE::CSR> &sm2){
+    sparse_matrix_t handlerC; //result sparse matrix handler;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
+    sparse_status_t status1 = SPARSE_STATUS_NOT_SUPPORTED;
+
+    sparse_index_base_t index;
+    int rows;
+    int cols;
+    int *rowStart;
+    int *rowEnd;
+    int *columns;
+    T *values;
+    if constexpr (is_same_v<T,float>){
+        status = mkl_sparse_s_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
+                                                                      ,1,sm2.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }else if constexpr (is_same_v<T,double>) {
+        status = mkl_sparse_d_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
+                                                                      ,1,sm2.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_d_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+
+    }else if  constexpr (is_same_v<T,complex<float>>){
+        complex<float> alpha(1,0);
+        status = mkl_sparse_c_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
+                                                                      ,alpha,sm2.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_c_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+
+    }else if constexpr (is_same_v<T,complex<double>>){
+        complex<double> alpha(1,0);
+        status = mkl_sparse_z_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
+                                                                      ,alpha,sm2.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_z_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }
+    check_sparse_operation_status(status1);
+
+    int nnz = rowEnd[rows-1]-rowStart[0];
+
+    vector<int_t> rows_start(rowStart,rowStart+rows);
+    vector<int_t> rows_end(rowEnd,rowEnd+rows);
+    vector<int_t> columns_index(columns,columns+nnz);
+    vector<T> vals(values,values+nnz);
+
+    mkl_sparse_destroy(handlerC); //destroy handler
+
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+
+}
+template<typename T>
+inline Matrix<T,2,MATRIX_TYPE::CSR> operator -(const Matrix<T,2,MATRIX_TYPE::CSR> &sm1,const Matrix<T,2,MATRIX_TYPE::CSR> &sm2){
+    sparse_matrix_t handlerC; //result sparse matrix handler;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
+    sparse_status_t status1 = SPARSE_STATUS_NOT_SUPPORTED;
+
+    sparse_index_base_t index;
+    int rows;
+    int cols;
+    int *rowStart;
+    int *rowEnd;
+    int *columns;
+    T *values;
+    if constexpr (is_same_v<T,float>){
+        status = mkl_sparse_s_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
+                                                                      ,-1,sm1.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }else if constexpr (is_same_v<T,double>) {
+        status = mkl_sparse_d_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
+                                                                      ,-1,sm1.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_d_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+
+    }else if  constexpr (is_same_v<T,complex<float>>){
+        complex<float> alpha(-1,0);
+        status = mkl_sparse_c_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
+                                                                      ,alpha,sm1.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_c_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+
+    }else if constexpr (is_same_v<T,complex<double>>){
+        complex<double> alpha(-1,0);
+        status = mkl_sparse_z_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
+                                                                      ,alpha,sm1.sparse_matrix_handler(),&handlerC);
+        check_sparse_operation_status(status); //checking for operation success
+        status1 = mkl_sparse_z_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }
+    check_sparse_operation_status(status1);
+
+    int nnz = rowEnd[rows-1]-rowStart[0];
+
+    vector<int_t> rows_start(rowStart,rowStart+rows);
+    vector<int_t> rows_end(rowEnd,rowEnd+rows);
+    vector<int_t> columns_index(columns,columns+nnz);
+    vector<T> vals(values,values+nnz);
+
+    mkl_sparse_destroy(handlerC); //destroy handler
+
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+}
+template<typename T>
+inline Matrix<T,2,MATRIX_TYPE::CSR> operator *(const Matrix<T,2,MATRIX_TYPE::CSR> &sm1,const Matrix<T,2,MATRIX_TYPE::CSR> &sm2){
+    sparse_matrix_t handlerC; //result sparse matrix handler;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
+    sparse_status_t status1 = SPARSE_STATUS_NOT_SUPPORTED;
+
+    sparse_index_base_t index;
+    int rows;
+    int cols;
+    int *rowStart;
+    int *rowEnd;
+    int *columns;
+    T *values;
+
+    status = mkl_sparse_spmm(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler(),sm2.sparse_matrix_handler(),&handlerC);
+    check_sparse_operation_status(status); //checking for operation success
+
+    if constexpr (is_same_v<T,float>){
+        status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }else if constexpr (is_same_v<T,double>) {
+        status1 = mkl_sparse_d_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }else if  constexpr (is_same_v<T,complex<float>>){
+        status1 = mkl_sparse_c_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }else if constexpr (is_same_v<T,complex<double>>){
+        status1 = mkl_sparse_z_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
+    }
+
+    check_sparse_operation_status(status1);
+    int nnz = rowEnd[rows-1]-rowStart[0];
+
+    vector<int_t> rows_start(rowStart,rowStart+rows);
+    vector<int_t> rows_end(rowEnd,rowEnd+rows);
+    vector<int_t> columns_index(columns,columns+nnz);
+    vector<T> vals(values,values+nnz);
+
+    mkl_sparse_destroy(handlerC); //destroy handler
+
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+
+
+
+}
 #endif // SPARSE_MATRIX_H

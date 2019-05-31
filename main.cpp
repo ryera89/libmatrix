@@ -2,6 +2,7 @@
 #include "ndimmatrix/ndmatrix.h"
 #include "ndimmatrix/symm_matrix.h"
 #include "ndimmatrix/herm_matrix.h"
+#include "ndimmatrix/sparse_matrix.h"
 //#include "mkl.h"
 #include <chrono>
 
@@ -9,11 +10,61 @@ using namespace std;
 
 constexpr int increment(int x){return ++x;}
 
-
+Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix(){
+    vector<double> values = { 1,-1,-3,-2, 5, 4, 6, 4,-4, 2, 7, 8,-5};
+    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
+    vector<int_t> rows_start = {0,3,5,8,11};
+    vector<int_t> rows_end = {3,5,8,11,13};
+    return Matrix<double,2,MATRIX_TYPE::CSR>(5,5,SPARSE_INDEX_BASE_ZERO,rows_start,rows_end,columns,values);
+}
+Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix1(){
+    vector<double> values = { 1, 1, 3, 2, 5, 4, 6, 4, 4, 2, 7, 8, 5};
+    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
+    vector<int_t> rows_start = {0,3,5,8,11,13};
+    vector<int_t> rows_end = {3,5,8,11,13,13};
+    return Matrix<double,2,MATRIX_TYPE::CSR>(6,6,SPARSE_INDEX_BASE_ZERO,rows_start,rows_end,columns,values);
+}
 int main(){
 
-    int test = 1923493484;
-    cout << test << endl;
+    cout << "TESTING SPARSE MATRIX FACILITIES \n";
+    Matrix<double,2,MATRIX_TYPE::CSR> SM(sparseMatrix());
+    cout << SM << endl;
+    Matrix<double,2,MATRIX_TYPE::CSR> SM2(SM);
+    cout << SM2 << endl;
+    Matrix<double,2,MATRIX_TYPE::CSR> SM3 = SM+SM2;
+    cout <<  SM3 << endl;
+    Matrix<double,2,MATRIX_TYPE::CSR> SM4 = SM2-SM3;
+    cout <<  SM4 << endl;
+
+    cout << SM2 << endl;
+    cout << SM3 << endl;
+
+    Matrix<double,2> CHECK(5,5,0.0);
+
+    for (int i = 0; i < 5; ++i){
+        for (int j = 0; j < 5; ++j){
+            for (int k = 0; k < 5; ++k){
+                CHECK(i,j) += SM2(i,k)*SM3(k,j);
+            }
+
+        }
+    }
+
+    Matrix<double,2,MATRIX_TYPE::CSR> SM5 = SM2*SM3;
+    cout << "sparse multiplation \n";
+    cout <<  SM5 << endl;
+    cout << CHECK << endl;
+
+
+    cout << SM2 << endl;
+    cout << SM3 << endl;
+    //SM = sparseMatrix1();
+
+    //cout << SM << endl;
+
+    //cout << SM2 << endl;
+
+
 //    Matrix<double,2> M1 = {{1,2,3,4},
 //                          {5,6,7,8},
 //                          {9,10,11,12}};
@@ -286,44 +337,44 @@ int main(){
 
 //Matrix<double,3,MATRIX_TYPE::SYMM> HM;
 
-Matrix<double,2,MATRIX_TYPE::SYMM> SM1(4);
-Matrix<double,2,MATRIX_TYPE::SYMM> SM2(4);
-Matrix<complex<double>,2,MATRIX_TYPE::GEN> GMC(4,4);
-Matrix<double,2,MATRIX_TYPE::GEN> GM(4,4);
-Matrix<complex<double>,2,MATRIX_TYPE::HER> HM1(4);
-Matrix<complex<double>,2,MATRIX_TYPE::HER> HM2(4);
+//Matrix<double,2,MATRIX_TYPE::SYMM> SM1(4);
+//Matrix<double,2,MATRIX_TYPE::SYMM> SM2(4);
+//Matrix<complex<double>,2,MATRIX_TYPE::GEN> GMC(4,4);
+//Matrix<double,2,MATRIX_TYPE::GEN> GM(4,4);
+//Matrix<complex<double>,2,MATRIX_TYPE::HER> HM1(4);
+//Matrix<complex<double>,2,MATRIX_TYPE::HER> HM2(4);
 
 
-complex<double> tmp = complex<double>(1,1);
-for (int i = 0; i < SM1.rows(); ++i)
-    for (int j = i; j < SM1.cols(); ++j){
-        SM1(i,j) = i*i;
-        SM2(i,j) = i+j;
-        GMC(i,j) = complex<double>(i*j,i+j);
-        HM1(i,j) = complex<double>(i*j,i+j);
-        HM2(i,j) = complex<double>(i+j,i*j);
-    }
+//complex<double> tmp = complex<double>(1,1);
+//for (int i = 0; i < SM1.rows(); ++i)
+//    for (int j = i; j < SM1.cols(); ++j){
+//        SM1(i,j) = i*i;
+//        SM2(i,j) = i+j;
+//        GMC(i,j) = complex<double>(i*j,i+j);
+//        HM1(i,j) = complex<double>(i*j,i+j);
+//        HM2(i,j) = complex<double>(i+j,i*j);
+//    }
 
-cout << HM1 << "\n" << HM2 << endl;
-auto R1 = HM1 + HM2;
-cout << "suma de dos matrices hermiticas: \n" << R1 << endl;
-auto R2 = SM1 + SM2;
-cout << "suma de dos matrices simetricas: \n" << R2 << endl;
-auto R3 = SM1+HM1;
-auto R4 = HM2-SM2;
-auto R5 = HM1+=5;
-cout << "suma de matriz simetrica y hermitica \n" << R3 << "\n" << R4 << "\n" << R5 << endl;
-auto R6 = GMC + SM1;
-auto R7 = HM2 + GMC;
-cout << R6 << "\n" << R7 << endl;
+//cout << HM1 << "\n" << HM2 << endl;
+//auto R1 = HM1 + HM2;
+//cout << "suma de dos matrices hermiticas: \n" << R1 << endl;
+//auto R2 = SM1 + SM2;
+//cout << "suma de dos matrices simetricas: \n" << R2 << endl;
+//auto R3 = SM1+HM1;
+//auto R4 = HM2-SM2;
+//auto R5 = HM1+=5;
+//cout << "suma de matriz simetrica y hermitica \n" << R3 << "\n" << R4 << "\n" << R5 << endl;
+//auto R6 = GMC + SM1;
+//auto R7 = HM2 + GMC;
+//cout << R6 << "\n" << R7 << endl;
 
 
-Matrix<complex<double>,1> vec = {complex<double>(1,0),complex<double>(1,0),complex<double>(1,0),complex<double>(1,0)};
-Matrix<double,1> vec1 = {1,1,1,1};
+//Matrix<complex<double>,1> vec = {complex<double>(1,0),complex<double>(1,0),complex<double>(1,0),complex<double>(1,0)};
+//Matrix<double,1> vec1 = {1,1,1,1};
 
-auto R8 = HM1*vec1;
-auto R9 = SM1*vec1;
-cout << "mulstiplicacion Matriz vector \n" << R9 << "\n" << R8;
+//auto R8 = HM1*vec1;
+//auto R9 = SM1*vec1;
+//cout << "mulstiplicacion Matriz vector \n" << R9 << "\n" << R8;
 //cout << SM1+SM2 << endl;
 //cout  << GMC + GM << endl;
 //cout << SM2-SM1 << endl;

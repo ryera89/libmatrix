@@ -10,15 +10,16 @@
 //#include <iomanip>
 //#include <map>
 
-//We must define MKL_Complex16 type before include the mkl.h header
-//#define MKL_Complex16 std::complex<double>
+//We must define MKL_Complex16 and MKL_Complex8 types before include the mkl.h header
+#define MKL_Complex16 std::complex<double>
+#define MKL_Complex8 std::complex<float>
 //#define MKL_INT uint32_t
 #include "mkl.h"
 
 using std::vector;
 using std::valarray;
 using namespace std;
-enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,CSR3};
+enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR};
 
 
 template<typename T>
