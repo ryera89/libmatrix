@@ -362,11 +362,15 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator +(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_s_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
                                                                       ,1,sm2.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
     }else if constexpr (is_same_v<T,double>) {
         status = mkl_sparse_d_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
                                                                       ,1,sm2.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_d_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
 
     }else if  constexpr (is_same_v<T,complex<float>>){
@@ -374,6 +378,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator +(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_c_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
                                                                       ,alpha,sm2.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_c_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
 
     }else if constexpr (is_same_v<T,complex<double>>){
@@ -381,6 +387,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator +(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_z_add(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler()
                                                                       ,alpha,sm2.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_z_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
     }
     check_sparse_operation_status(status1);
@@ -414,11 +422,15 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator -(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_s_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
                                                                       ,-1,sm1.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
     }else if constexpr (is_same_v<T,double>) {
         status = mkl_sparse_d_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
                                                                       ,-1,sm1.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_d_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
 
     }else if  constexpr (is_same_v<T,complex<float>>){
@@ -426,6 +438,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator -(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_c_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
                                                                       ,alpha,sm1.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_c_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
 
     }else if constexpr (is_same_v<T,complex<double>>){
@@ -433,6 +447,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator -(const Matrix<T,2,MATRIX_TYPE::CSR
         status = mkl_sparse_z_add(SPARSE_OPERATION_NON_TRANSPOSE,sm2.sparse_matrix_handler()
                                                                       ,alpha,sm1.sparse_matrix_handler(),&handlerC);
         check_sparse_operation_status(status); //checking for operation success
+        status = mkl_sparse_order(handlerC);
+        check_sparse_operation_status(status);
         status1 = mkl_sparse_z_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
     }
     check_sparse_operation_status(status1);
@@ -464,6 +480,8 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator *(const Matrix<T,2,MATRIX_TYPE::CSR
 
     status = mkl_sparse_spmm(SPARSE_OPERATION_NON_TRANSPOSE,sm1.sparse_matrix_handler(),sm2.sparse_matrix_handler(),&handlerC);
     check_sparse_operation_status(status); //checking for operation success
+    status = mkl_sparse_order(handlerC);
+    check_sparse_operation_status(status);
 
     if constexpr (is_same_v<T,float>){
         status1 = mkl_sparse_s_export_csr(handlerC,&index,&rows,&cols,&rowStart,&rowEnd,&columns,&values);
@@ -486,8 +504,43 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator *(const Matrix<T,2,MATRIX_TYPE::CSR
     mkl_sparse_destroy(handlerC); //destroy handler
 
     return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+}
+template<typename T>
+inline Matrix<T,1> operator *(const Matrix<double,2,MATRIX_TYPE::CSR> &sm,const Matrix<T,1> &v){
+    assert(sm.cols() == v.size());
+    matrix_descr descr;
+    descr.type = SPARSE_MATRIX_TYPE_GENERAL;
+    Matrix<T,1> res(sm.rows());
+    T d;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;;
+    if constexpr (is_same_v<T,float>){
+        float alpha = 1;
+        float beta = 0;
+        status = mkl_sparse_s_dotmv(SPARSE_OPERATION_NON_TRANSPOSE,alpha,sm.sparse_matrix_handler()
+                                                                               ,descr,v.begin(),beta,res.begin(),&d);
+        check_sparse_operation_status(status);
+    }else if constexpr (is_same_v<T,double>) {
+        double alpha = 1;
+        double beta = 0;
+        status = mkl_sparse_d_dotmv(SPARSE_OPERATION_NON_TRANSPOSE,alpha,sm.sparse_matrix_handler()
+                                                                               ,descr,v.begin(),beta,res.begin(),&d);
+        check_sparse_operation_status(status);
 
+    }else if constexpr (is_same_v<T,float>) {
+        complex<float> alpha(1,0);
+        complex<float> beta(0,0);
+        status = mkl_sparse_c_dotmv(SPARSE_OPERATION_NON_TRANSPOSE,alpha,sm.sparse_matrix_handler()
+                                                                               ,descr,v.begin(),beta,res.begin(),&d);
+        check_sparse_operation_status(status);
 
+    }else if constexpr (is_same_v<T,float>){
+        complex<double> alpha(1,0);
+        complex<double> beta(0,0);
+        status = mkl_sparse_z_dotmv(SPARSE_OPERATION_NON_TRANSPOSE,alpha,sm.sparse_matrix_handler()
+                                                                               ,descr,v.begin(),beta,res.begin(),&d);
+        check_sparse_operation_status(status);
+    }
 
+    return res;
 }
 #endif // SPARSE_MATRIX_H

@@ -56,8 +56,14 @@ int main(){
     cout << CHECK << endl;
 
 
-    cout << SM2 << endl;
-    cout << SM3 << endl;
+
+    Matrix<double,1> vec = {1,2,3,4,5};
+
+    vec = SM5*vec;
+
+    cout << vec << endl;
+
+
     //SM = sparseMatrix1();
 
     //cout << SM << endl;
