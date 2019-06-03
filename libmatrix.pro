@@ -33,6 +33,7 @@ SOURCES += \
 HEADERS += \
     ndimmatrix/herm_matrix.h \
     ndimmatrix/matrix.h \
+    ndimmatrix/matrix_arithmetic_ops.h \
     ndimmatrix/matrix_impl.h \
     ndimmatrix/matrix_ref.h \
     ndimmatrix/matrix_slice.h \

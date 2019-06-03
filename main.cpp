@@ -3,6 +3,7 @@
 #include "ndimmatrix/symm_matrix.h"
 #include "ndimmatrix/herm_matrix.h"
 #include "ndimmatrix/sparse_matrix.h"
+#include "ndimmatrix/matrix_arithmetic_ops.h"
 //#include "mkl.h"
 #include <chrono>
 
@@ -59,9 +60,46 @@ int main(){
 
     Matrix<double,1> vec = {1,2,3,4,5};
 
-    vec = SM5*vec;
+    Matrix<double,1> rvec1 = SM5*vec;
+    Matrix<double,1> rvec2 = CHECK*vec;
 
-    cout << vec << endl;
+
+    Matrix<double,1> rvec3 = vec*SM5;
+    Matrix<double,1> rvec4 = vec*CHECK;
+
+    cout << rvec1 << endl;
+    cout << rvec2 << endl;
+    cout << rvec3 << endl;
+    cout << rvec4 << endl;
+
+    Matrix<double,2> DM1 = {{1,2,3,4,5},
+                             {6,7,8,9,10}};
+
+
+    Matrix<double,2> DM2 = { {1,2},
+                             {3,4},
+                             {5,6},
+                             {7,8},
+                             {9,10}};
+
+    Matrix<double,2> DSR1 = DM1*SM5;
+    Matrix<double,2> DSR2 = SM5*DM2;
+
+    Matrix<double,2> DDR1 = DM1*CHECK;
+    Matrix<double,2> DDR2 = CHECK*DM2;
+
+    cout << "dense matrix - sparse matrix product \n ";
+    cout << DSR1 << endl;
+    cout << DDR1 << endl;
+
+    cout << " sparse matrix - dense matrix product \n ";
+    cout << DSR2 << endl;
+    cout << DDR2 << endl;
+
+
+    //vec = vec*SM5;
+
+    //cout << vec << endl;
 
 
     //SM = sparseMatrix1();
