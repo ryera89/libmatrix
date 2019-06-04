@@ -1176,7 +1176,7 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator +(const Matrix<T,2,MATRIX_TYPE::CSR
 
     mkl_sparse_destroy(handlerC); //destroy handler
 
-    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,move(rows_start),move(rows_end),move(columns_index),move(vals));
 
 }
 template<typename T>
@@ -1236,7 +1236,7 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator -(const Matrix<T,2,MATRIX_TYPE::CSR
 
     mkl_sparse_destroy(handlerC); //destroy handler
 
-    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,move(rows_start),move(rows_end),move(columns_index),move(vals));
 }
 template<typename T>
 inline Matrix<T,2> operator *(const Matrix<T,2,MATRIX_TYPE::CSR> &sm,const Matrix<T,2> &dm){
@@ -1339,7 +1339,7 @@ inline Matrix<T,2,MATRIX_TYPE::CSR> operator *(const Matrix<T,2,MATRIX_TYPE::CSR
 
     mkl_sparse_destroy(handlerC); //destroy handler
 
-    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,index,move(rows_start),move(rows_end),move(columns_index),move(vals));
+    return Matrix<T,2,MATRIX_TYPE::CSR>(rows,cols,move(rows_start),move(rows_end),move(columns_index),move(vals));
 }
 
 

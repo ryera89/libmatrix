@@ -16,14 +16,14 @@ Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix(){
     vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
     vector<int_t> rows_start = {0,3,5,8,11};
     vector<int_t> rows_end = {3,5,8,11,13};
-    return Matrix<double,2,MATRIX_TYPE::CSR>(5,5,SPARSE_INDEX_BASE_ZERO,rows_start,rows_end,columns,values);
+    return Matrix<double,2,MATRIX_TYPE::CSR>(5,5,rows_start,rows_end,columns,values);
 }
 Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix1(){
     vector<double> values = { 1, 1, 3, 2, 5, 4, 6, 4, 4, 2, 7, 8, 5};
     vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
     vector<int_t> rows_start = {0,3,5,8,11,13};
     vector<int_t> rows_end = {3,5,8,11,13,13};
-    return Matrix<double,2,MATRIX_TYPE::CSR>(6,6,SPARSE_INDEX_BASE_ZERO,rows_start,rows_end,columns,values);
+    return Matrix<double,2,MATRIX_TYPE::CSR>(6,6,rows_start,rows_end,columns,values);
 }
 int main(){
 
