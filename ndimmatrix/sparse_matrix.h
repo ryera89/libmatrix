@@ -40,6 +40,7 @@ private:
         m_elems.shrink_to_fit();
     }
     void initSparseMatrixHandler(){
+        if (nnz() == 0) return;
         sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
         if constexpr (is_same_v<T,float>){
             status = mkl_sparse_s_create_csr(&m_handler,m_index,m_rows,m_cols,m_rows_start.data(),m_rows_end.data(),
@@ -65,7 +66,7 @@ public:
     using const_iterator = typename vector<T>::const_iterator;
 
     Matrix() = default;
-    ~Matrix(){mkl_sparse_destroy(m_handler);} //WARNING: may be memory leaks //= default;
+    ~Matrix(){if (nnz() != 0) mkl_sparse_destroy(m_handler);} //WARNING: may be memory leaks //= default;
     //Move constructor and assignment
     Matrix(Matrix&& other):m_rows(other.m_rows),m_cols(other.m_cols),m_rows_start(move(other.m_rows_start)),
                              m_rows_end(move(other.m_rows_end)),m_rowsIndex(move(other.m_rowsIndex)),m_columns(move(other.m_columns)),
@@ -186,6 +187,21 @@ public:
     size_t nnz() const{return m_elems.size();}
     uint32_t rows() const{return m_rows;}
     uint32_t cols() const{return m_cols;}
+
+    Matrix operator-() const{
+        Matrix R(*this);
+        for_each(R.m_elems.begin(),R.m_elems.end(),[](T &ele){ele = -ele;});
+        return R;
+    }
+    Matrix& operator*=(const T &val){
+        for_each(m_elems.begin(),m_elems.end(),[&val](T &ele){ele*=val;});
+        return *this;
+    }
+    Matrix& operator/=(const T &val){
+        for_each(m_elems.begin(),m_elems.end(),[&val](T &ele){ele/=val;});
+        return *this;
+    }
+
 
     //TODO: revisar el algoritmo aca...
     const T& operator()(size_t i,size_t j) const{
