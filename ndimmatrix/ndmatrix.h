@@ -109,6 +109,9 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    T* data(){return std::begin(m_elems);}
+    const T* data() const{return std::begin(m_elems);}
+
     //Matrix apply(T (func)(T)){Matrix r(m_desc.m_extents); std::transform(begin(),end(),r.begin(),func); return r;}
     Matrix apply(T (func)(T)) const{
         Matrix r;
@@ -323,6 +326,9 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
     const valarray<T>& values() const{return m_elems;}
+
+    T* data(){return std::begin(m_elems);}
+    const T* data() const{return std::begin(m_elems);}
 
     Matrix apply(T (func)(T val)){
         Matrix r;
@@ -576,6 +582,9 @@ public:
     auto begin() const{return std::cbegin(m_elems);}
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
+
+    T* data(){return std::begin(m_elems);}
+    const T* data() const{return std::begin(m_elems);}
 
     //Arithmetic ops
     Matrix apply(T (func)(T val)){

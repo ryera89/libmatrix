@@ -76,7 +76,6 @@ public:
     Matrix& operator=(Matrix&& other){
     m_rows = other.m_rows;
     m_cols = other.m_cols;
-    m_index = other.m_index;
     m_rows_start = move(other.m_rows_start);
     m_rows_end = move(other.m_rows_end);
     m_rowsIndex = move(other.m_rowsIndex);
@@ -347,5 +346,8 @@ public:
 
     T* valuesData(){return m_elems.data();}
     const T* valuesData() const{return m_elems.data();}
+
+    T* data(){return m_elems.data();}
+    const T* data() const{return m_elems.data();}
 };
 #endif // SPARSE_MATRIX_H

@@ -54,6 +54,9 @@ public:
     auto end(){return std::end(m_elems);}
     auto end() const{return std::cend(m_elems);}
 
+    T* data(){return std::begin(m_elems);}
+    const T* data() const{return std::begin(m_elems);}
+
     const Matrix_Slice<2>& descriptor() const{return m_desc;}
     const std::valarray<T>& values() const{return m_elems;}
 
