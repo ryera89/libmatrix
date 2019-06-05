@@ -301,9 +301,9 @@ public:
 
     const vector<T>& values() const{return m_elems;}
     const vector<int_t>& columns() const{return m_columns;}
-    const vector<int_t>& rowStart() const{return m_rows_start;}
-    const vector<int_t>& rowEnd() const{return m_rows_end;}
-    const vector<int_t>& rowIndex() const{return m_rowsIndex;} //rowIndex for 3 array variation
+    const vector<int_t>& rowsStart() const{return m_rows_start;}
+    const vector<int_t>& rowsEnd() const{return m_rows_end;}
+    const vector<int_t>& rowsIndex() const{return m_rowsIndex;} //rowIndex for 3 array variation
     const sparse_matrix_t& sparse_matrix_handler() const{return m_handler;} //sparse matrix handler
 
     vector<int_t>::iterator columnsBegin(){return m_columns.begin();}
