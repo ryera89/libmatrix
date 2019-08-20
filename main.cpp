@@ -75,8 +75,12 @@ int main(){
         }
     }
 
-    Matrix<double,2,MATRIX_TYPE::CSR> SM5 = SM2*SM3;
-    cout << "sparse multiplation \n";
+    Matrix<double,2> SM5 = SM2*SM3;
+    cout << "********************sparse multiplation***************************************** \n";
+    cout << "****Factors******* \n";
+    cout << SM2 << endl;
+    cout << SM3 << endl;
+    cout << "****Product******* \n";
     cout <<  SM5 << endl;
     cout << CHECK << endl;
 
@@ -120,6 +124,7 @@ int main(){
     cout << DSR2 << endl;
     cout << DDR2 << endl;
 
+    cout << "Rolando Yera Moreno" << "\n";
 
 
     cout << "************************testing symmetric sparse matrix**************************************\n";
