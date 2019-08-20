@@ -19,8 +19,9 @@
 using std::vector;
 using std::valarray;
 using namespace std;
-enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR};
-
+enum class MATRIX_TYPE{GEN,SYMM,HER,UTRI,LTRI,DIAG,CSR,SCSR,HCSR};
+/* SCSR: symmetric sparse
+ * HCSR: hermitian sparse */
 
 template<typename T>
 constexpr bool is_complex(){
@@ -35,7 +36,8 @@ constexpr bool is_number(){ //es complejo o real
 
 template<typename T,size_t N,MATRIX_TYPE type = MATRIX_TYPE::GEN,
           typename = typename std::enable_if_t<is_number<T>() && ((N!=2 && type == MATRIX_TYPE::GEN) ||
-                                              (N==2 && ((type == MATRIX_TYPE::HER && is_complex<T>()) || type != MATRIX_TYPE::HER))) >>
+                                                                 (N==2 && (((type == MATRIX_TYPE::HER || type == MATRIX_TYPE::HCSR) && is_complex<T>())
+                                                                             || (type != MATRIX_TYPE::HER || type != MATRIX_TYPE::HCSR)))) >>
 class Matrix{
 private:
     Matrix_Slice<N> m_desc;

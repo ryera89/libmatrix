@@ -18,12 +18,36 @@ Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix(){
     vector<int_t> rows_end = {3,5,8,11,13};
     return Matrix<double,2,MATRIX_TYPE::CSR>(5,5,rows_start,rows_end,columns,values);
 }
-Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix1(){
-    vector<double> values = { 1, 1, 3, 2, 5, 4, 6, 4, 4, 2, 7, 8, 5};
-    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
-    vector<int_t> rows_start = {0,3,5,8,11,13};
-    vector<int_t> rows_end = {3,5,8,11,13,13};
-    return Matrix<double,2,MATRIX_TYPE::CSR>(6,6,rows_start,rows_end,columns,values);
+//Matrix<double,2,MATRIX_TYPE::CSR> sparseMatrix1(){
+//    vector<double> values = { 1, 1, 3, 2, 5, 4, 6, 4, 4, 2, 7, 8, 5};
+//    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 1, 4};
+//    vector<int_t> rows_start = {0,3,5,8,11,13};
+//    vector<int_t> rows_end = {3,5,8,11,13,13};
+//    return Matrix<double,2,MATRIX_TYPE::CSR>(6,6,rows_start,rows_end,columns,values);
+//}
+Matrix<double,2,MATRIX_TYPE::SCSR> symmetricSparseMatrix(){
+//    vector<double> values = { 1,-1,-3, 5, 4, 6, 4, 7,-5};
+//    vector<int_t> columns = { 0, 1, 3, 1, 2, 3, 4, 3, 4};
+//    vector<int_t> rows_start = {0,3,4,7,8};
+//    vector<int_t> rows_end =   {3,4,7,8,9};
+//    return Matrix<double,2,MATRIX_TYPE::SCSR>(5,rows_start,rows_end,columns,values);
+    vector<double> values = { 1,-1,-3,-1, 5, 4, 6, 4,-3, 6, 7, 4,-5};
+    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 2, 4};
+    vector<int_t> rows_start = {0,3,5,8,11};
+    vector<int_t> rows_end =   {3,5,8,11,13};
+    return Matrix<double,2,MATRIX_TYPE::SCSR>(5,rows_start,rows_end,columns,values);
+}
+Matrix<double,2,MATRIX_TYPE::SCSR> symmetricSparseMatrix_v1(){
+    vector<double> values = { 1,-1,-3, 5, 4, 6, 4, 7,-5};
+    vector<int_t> columns = { 0, 1, 3, 1, 2, 3, 4, 3, 4};
+    vector<int_t> rows_start = {0,3,4,7,8};
+    vector<int_t> rows_end =   {3,4,7,8,9};
+    return Matrix<double,2,MATRIX_TYPE::SCSR>(5,rows_start,rows_end,columns,values);
+//    vector<double> values = { 1,-1,-3,-1, 5, 4, 6, 4,-3, 6, 7, 4,-5};
+//    vector<int_t> columns = { 0, 1, 3, 0, 1, 2, 3, 4, 0, 2, 3, 2, 4};
+//    vector<int_t> rows_start = {0,3,5,8,11};
+//    vector<int_t> rows_end =   {3,5,8,11,13};
+//    return Matrix<double,2,MATRIX_TYPE::SCSR>(5,rows_start,rows_end,columns,values);
 }
 int main(){
 
@@ -96,6 +120,48 @@ int main(){
     cout << DSR2 << endl;
     cout << DDR2 << endl;
 
+
+
+    cout << "************************testing symmetric sparse matrix**************************************\n";
+    Matrix<double,2,MATRIX_TYPE::SCSR> SSM1 = symmetricSparseMatrix();
+    SSM1.printData();
+    cout << SSM1 << endl;
+
+    Matrix<double,2,MATRIX_TYPE::SCSR> SSM2 = SSM1+SSM1;
+    SSM2.printData();
+    cout << SSM2 << endl;
+
+    //Matrix<double,2,MATRIX_TYPE::CSR> SSM3 = SSM1*SSM1;
+    //SSM2.printData();
+    //cout << SSM3 << endl;
+
+    Matrix<double,1> vvv1 = SSM1*vec;
+    cout << vvv1 << endl;
+    Matrix<double,2,MATRIX_TYPE::SCSR> SSM1_v1 = symmetricSparseMatrix_v1();
+    Matrix<double,1> vvv1_v1 = SSM1_v1*vec;
+    cout << vvv1_v1 << endl;
+
+    Matrix<double,1> vvv2 = vec*SSM1;
+    cout << vvv2 << endl;
+    Matrix<double,1> vvv2_v1 = vec*SSM1_v1;
+    cout << vvv2_v1 << endl;
+
+
+//    sparse_matrix_t handlerC; //result sparse matrix handler;
+//    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
+//    status = mkl_sparse_sp2m(SPARSE_OPERATION_NON_TRANSPOSE,SSM1.descr(),SSM1.sparse_matrix_handler(),
+//                             SPARSE_OPERATION_NON_TRANSPOSE,SSM1.descr(),SSM1.sparse_matrix_handler(),
+//                             SPARSE_STAGE_FULL_MULT,&handlerC);
+
+    Matrix<double,2> SSM3 = CHECK*SSM1;
+    cout << SSM3 << endl;
+    Matrix<double,2> SSM3_v1 = CHECK*SSM1_v1;
+    cout << SSM3_v1 << endl;
+
+    Matrix<double,2> SSM3_ = SSM1*CHECK;
+    cout << SSM3_ << endl;
+    Matrix<double,2> SSM3_v1_ = SSM1_v1*CHECK;
+    cout << SSM3_v1_ << endl;
 
     //vec = vec*SM5;
 
