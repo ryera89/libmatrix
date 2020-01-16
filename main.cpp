@@ -61,6 +61,10 @@ int main(){
     Matrix<double,2,MATRIX_TYPE::CSR> SM4 = SM2-SM3;
     cout <<  SM4 << endl;
 
+    vector<uint32_t> indx = {2,1,4,3};
+
+    SM4 = SM(indx,indx);
+
     cout << SM2 << endl;
     cout << SM3 << endl;
 

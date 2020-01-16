@@ -234,6 +234,12 @@ public:
         vector<int_t> pointerB(nrow);
         vector<int_t> pointerE(nrow);
 
+        //code for new algorithm
+        vector<int_t> indx(jindex.size()); //vector para manter track de indices ordenados.
+        iota(indx.begin(),indx.end(),0); //genetando secuencia 0,1,2,3....N-1
+        //obteniendo indices de elementos menores.
+        sort(indx.begin(),indx.end(),[&jindex](int_t i1, int_t i2){return jindex[i1] < jindex[i2];});
+        //**********************
         for (uint32_t i = 0; i < nrow; ++i){
             bool rfirst_inclusion =  true;
             uint32_t ii = iindex[i];
@@ -353,6 +359,7 @@ public:
     T* data(){return m_elems.data();}
     const T* data() const{return m_elems.data();}
 };
+//Symmetric Sparse Matrix Support
 template<typename T>
 class Matrix<T,2,MATRIX_TYPE::SCSR>{
 private:
@@ -683,6 +690,7 @@ public:
     T* data(){return m_elems.data();}
     const T* data() const{return m_elems.data();}
 };
+//Hermitian Sparse Matrix Support
 template<typename T>
 class Matrix<T,2,MATRIX_TYPE::HCSR>{
 private:

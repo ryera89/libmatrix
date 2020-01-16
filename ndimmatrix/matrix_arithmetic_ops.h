@@ -152,7 +152,7 @@ sparse_matrix_vector_prod(const Matrix<double,2,mtype> &sm,const Matrix<T,1> &v)
     //descr.type = SPARSE_MATRIX_TYPE_GENERAL;
     Matrix<T,1> res(sm.rows());
     T d;
-    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
     if constexpr (is_same_v<T,float>){
         float alpha = 1;
         float beta = 0;
@@ -192,7 +192,7 @@ vector_sparse_matrix_prod(const Matrix<T,1> &v,const Matrix<double,2,mtype> &sm)
     //descr.type = SPARSE_MATRIX_TYPE_GENERAL;
     Matrix<T,1> res(sm.rows());
     T d;
-    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;;
+    sparse_status_t status = SPARSE_STATUS_NOT_SUPPORTED;
     if constexpr (is_same_v<T,float>){
         float alpha = 1;
         float beta = 0;
